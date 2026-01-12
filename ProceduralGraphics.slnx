@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="ProceduralGraphics/ProceduralGraphics.vcxproj" Id="3cfcfdbe-55f5-49ef-a1f6-8a7d13c6868f" />
+</Solution>
