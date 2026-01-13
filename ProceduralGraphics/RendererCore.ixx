@@ -6,11 +6,9 @@ module;
 export module RendererCore;
 
 import DebugUtilities;
+import RendererData;
 
-// Globals to utilize that are core of the renderer system.
-GLFWwindow* MainWindow;
-
-// Function headers.
+// Function prototypes
 void Update();
 void Render();
 void LoadResources();
@@ -27,7 +25,7 @@ export bool InitRenderer()
 	MainWindow = glfwCreateWindow(1920, 1080, "Procedural Graphics", NULL, NULL);
 	if (MainWindow == NULL)
 	{
-		Log("!!!!!!!!GLFW failed to initialize properly!!!!!!!!!!!");
+		LogCrash("GLFW failed to Initialize Properly");
 
 		glfwTerminate();
 		return false;

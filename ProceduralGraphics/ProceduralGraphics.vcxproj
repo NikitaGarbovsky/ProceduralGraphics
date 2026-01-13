@@ -146,6 +146,7 @@
     <ClCompile Include="RendererCore.ixx" />
     <ClCompile Include="RendererData.ixx" />
     <ClCompile Include="RendererEntitys.ixx" />
+    <ClCompile Include="RendererUtilities.ixx" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
