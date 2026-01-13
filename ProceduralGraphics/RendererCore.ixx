@@ -2,11 +2,13 @@ module;
 
 #include <glew.h>
 #include <glfw3.h>
+#include <filesystem>
 
 export module RendererCore;
 
 import DebugUtilities;
 import RendererData;
+import RendererUtilities;
 
 // Function prototypes
 void Update();
@@ -17,6 +19,7 @@ export bool InitRenderer()
 {
 	Log("Initializing Renderer...");
 
+	// Initialize glfw & the main window
 	glfwInit();
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -32,8 +35,17 @@ export bool InitRenderer()
 	}
 	glfwMakeContextCurrent(MainWindow);
 
-	glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+	// Initialize glew
+	glewExperimental = GL_TRUE;
+	GLenum error = glewInit();
+	if (error != GLEW_OK)
+	{
+		LogCrash("GLEW initialization failed!");
+		Log((const char*)glewGetErrorString(error));
+		return false;
+	}
 
+	glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
 	glViewport(0, 0, 1920, 1080);
 
 	Log("Renderer Succussfully Initialized");
@@ -45,11 +57,24 @@ export bool InitRenderer()
 export void LoadResources()
 {
 	Log("Loading Resources...");
+	Log(std::filesystem::current_path().string().c_str());
 
-	Log("Resources Successfully Loaded");
+	// Create shader programs
+	RenderObjProgram = LoadShaderProgram("Assets/Shaders/TextureNormPos.vert", "Assets/Shaders/lit.frag");
+
+	Log("Resources finished loading.");
 }
+
 export void RenderLoop()
 {
+	// Renderer configuration
+	glEnable(GL_DEPTH_TEST);
+	glClear(GL_COLOR_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	glDepthFunc(GL_LEQUAL);
+	glDisable(GL_CULL_FACE);
+	glEnable(GL_MULTISAMPLE);
+	//glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // Make cursor disabled upon startup.
+
 	while (glfwWindowShouldClose(MainWindow) == false)
 	{
 		Update();
@@ -58,8 +83,9 @@ export void RenderLoop()
 	}
 }
 
-export void TerminateAndCleanUp()
+export void CleanUpAndShutdown()
 {
+	glfwDestroyWindow(MainWindow);
 	glfwTerminate();
 }
 

@@ -7,7 +7,6 @@ int main()
     
     if (runRenderLoop)
         RenderLoop();
-    
-    // Clean up and release everything after application shutdown
-    TerminateAndCleanUp();
+    else
+        CleanUpAndShutdown();    
 }
