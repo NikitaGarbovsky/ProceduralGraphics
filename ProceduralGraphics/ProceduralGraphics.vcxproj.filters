@@ -33,5 +33,14 @@
     <ClCompile Include="RendererUtilities.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="RendererFrame.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RendererPipeline.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RendererAssetPipeline.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

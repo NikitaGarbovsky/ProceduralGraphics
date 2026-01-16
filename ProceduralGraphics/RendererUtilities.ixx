@@ -67,21 +67,28 @@ export auto LoadShaderProgram(const char* _vertexShaderPath, const char* _fragme
 GLuint CreateShader(GLenum _shaderType, const char* _shaderName)
 {
 	std::string shaderSrc = "#version 460 core\n\n";
-	Log(("Shader size: " + std::to_string(shaderSrc.size())).c_str());
-	// =========== This automatically adds the lighting logic to every fragment shader =========== 
+	//Log(("Shader size: " + std::to_string(shaderSrc.size())).c_str());
+
+	//// =========== This automatically adds the lighting logic to every fragment shader =========== 
+	// #TODO, move this to a proper system that will assign any additional module shader 
+	// functions 
 	if (_shaderType == GL_FRAGMENT_SHADER)
 	{
 		shaderSrc += ReadShaderFile("Assets/Shaders/Common/lighting.glsl");
 		shaderSrc += "\n\n";
 	}
 
-	// Read the shader files and save the source code as strings
+	//// Read the shader files and save the source code as strings
 	std::string var = ReadShaderFile(_shaderName);
-	Log(("Shader size: " + std::to_string(shaderSrc.size())).c_str());
+	//Log(("Shader size: " + std::to_string(shaderSrc.size())).c_str());
 	shaderSrc.append(var);
-	Log(("Shader size: " + std::to_string(shaderSrc.size())).c_str());
+	//Log(("Shader size: " + std::to_string(shaderSrc.size())).c_str());
 
-	// ========= ^^This automatically adds the lighting logic to every fragment shader^^ ========= 
+	/*auto nul = shaderSrc.find('\0');
+	if (nul != std::string::npos) {
+		Log(("Found NUL in shaderSrc at byte " + std::to_string(nul)).c_str());
+	}*/
+	//// ========= ^^This automatically adds the lighting logic to every fragment shader^^ ========= 
 	 
 	// Create the shader ID and create pointers for source code string and length
 	GLuint shaderID = glCreateShader(_shaderType);
@@ -89,35 +96,31 @@ GLuint CreateShader(GLenum _shaderType, const char* _shaderName)
 	const GLchar* string = shaderSrc.c_str();
 	GLint length = static_cast<GLint>(shaderSrc.size());
 
-	/*Log("==== FINAL FRAGMENT SHADER BEGIN ====");
-	Log(shaderSrc.substr(0, 10000).c_str());
-	Log("==== FINAL FRAGMENT SHADER END ====");*/
+	//{
+	//	// Count #version occurrences
+	//	size_t versions = 0;
+	//	size_t pos = 0;
+	//	while ((pos = shaderSrc.find("#version", pos)) != std::string::npos) { versions++; pos += 8; }
 
-	{
-		// Count #version occurrences
-		size_t versions = 0;
-		size_t pos = 0;
-		while ((pos = shaderSrc.find("#version", pos)) != std::string::npos) { versions++; pos += 8; }
+	//	// Check for main()
+	//	bool hasMain = (shaderSrc.find("void main(") != std::string::npos) || (shaderSrc.find("void main") != std::string::npos);
 
-		// Check for main()
-		bool hasMain = (shaderSrc.find("void main(") != std::string::npos) || (shaderSrc.find("void main") != std::string::npos);
+	//	Log(("Diagnostic: shader length = " + std::to_string(shaderSrc.size())).c_str());
+	//	Log(("Diagnostic: #version count = " + std::to_string(versions)).c_str());
+	//	Log((std::string("Diagnostic: hasMain = ") + (hasMain ? "true" : "false")).c_str());
 
-		Log(("Diagnostic: shader length = " + std::to_string(shaderSrc.size())).c_str());
-		Log(("Diagnostic: #version count = " + std::to_string(versions)).c_str());
-		Log((std::string("Diagnostic: hasMain = ") + (hasMain ? "true" : "false")).c_str());
-
-		// Dump the entire shader to disk for manual inspection
-		std::ofstream out("debug_shader_dump.glsl", std::ios::binary);
-		out << shaderSrc;
-		out.close();
-		Log("Wrote debug_shader_dump.glsl to executable directory.");
-	}
+	//	// Dump the entire shader to disk for manual inspection
+	//	std::ofstream out("debug_shader_dump.glsl", std::ios::binary);
+	//	out << shaderSrc;
+	//	out.close();
+	//	Log("Wrote debug_shader_dump.glsl to executable directory.");
+	//}
 
 	// Populate the shader Object (ID) and compile
 	glShaderSource(shaderID, 1, &string, &length);
 	glCompileShader(shaderID);
 
-	GLint logLen = 0;
+	/*GLint logLen = 0;
 	glGetShaderiv(shaderID, GL_INFO_LOG_LENGTH, &logLen);
 	if (logLen > 1) {
 		std::string compileLog(logLen, '\0');
@@ -126,7 +129,7 @@ GLuint CreateShader(GLenum _shaderType, const char* _shaderName)
 	}
 	else {
 		Log("Shader compile log: <empty>");
-	}
+	}*/
 
 	// Check for errors
 	int compile_result = 0;
@@ -143,8 +146,7 @@ GLuint CreateShader(GLenum _shaderType, const char* _shaderName)
 auto ReadShaderFile(const char* _filename) -> std::string
 {
 	// Open the file for reading
-	std::ifstream file(_filename, std::ios::in);
-	std::string shaderCode;
+	std::ifstream file(_filename, std::ios::binary);
 
 	// Ensure the file is open and readable
 	if (!file.good()) {
@@ -161,23 +163,17 @@ auto ReadShaderFile(const char* _filename) -> std::string
 		return "";
 	}
 
-	// Determine the size of the file in characters and resize the string variable to accomodate
-	file.seekg(0, std::ios::end);
-	size_t size = static_cast<size_t>(file.tellg());
-	shaderCode.resize((unsigned int)file.tellg());
-
-	// Set the position of the next character to be read back to the beginning
-	file.seekg(0, std::ios::beg);
-	// Extract the contents of the file and store in the string variable
-	file.read(&shaderCode[0], shaderCode.size());
-	file.close();
-
-	std::string success = "Loaded shader file: " + std::string(_filename) +
+	std::string shaderCode((std::istreambuf_iterator<char>(file)),
+		std::istreambuf_iterator<char>());
+	/*Log((std::string("Loaded shader file: ") + _filename +
+		" (" + std::to_string(shaderCode.size()) + " bytes)").c_str());*/
+	/*std::string success = "Loaded shader file: " + std::string(_filename) +
 		" (" + std::to_string(size) + " bytes)";
-	Log(success.c_str());
+	Log(success.c_str());*/
 
 	return shaderCode;
 }
+
 void PrintErrorDetails(bool _isShader, GLuint _id, const char* _name)
 {
 	int infoLogLength = 0;

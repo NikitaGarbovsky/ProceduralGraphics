@@ -1,19 +1,28 @@
 module;
 
+// Normal imports
 #include <glew.h>
 #include <glfw3.h>
-#include <filesystem>
+#include <glm.hpp>
+#include <ext/matrix_clip_space.hpp>
 
 export module RendererCore;
 
+// Codebase module imports
 import DebugUtilities;
 import RendererData;
 import RendererUtilities;
+import RendererPipeline;
+import RendererEntitys;
+import RendererFrame;
+import RendererAssetPipeline;
 
 // Function prototypes
-void Update();
 void Render();
 void LoadResources();
+
+// Global accessible info for the 
+static FrameContext GFrame;
 
 export bool InitRenderer()
 {
@@ -21,7 +30,7 @@ export bool InitRenderer()
 
 	// Initialize glfw & the main window
 	glfwInit();
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 
@@ -45,8 +54,16 @@ export bool InitRenderer()
 		return false;
 	}
 
-	glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glViewport(0, 0, 1920, 1080);
+
+	// Renderer configuration
+	glEnable(GL_DEPTH_TEST);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glDepthFunc(GL_LEQUAL);
+	glDisable(GL_CULL_FACE);
+	glEnable(GL_MULTISAMPLE);
+	//glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // Make cursor disabled upon startup.
 
 	Log("Renderer Succussfully Initialized");
 	
@@ -57,47 +74,65 @@ export bool InitRenderer()
 export void LoadResources()
 {
 	Log("Loading Resources...");
-	Log(std::filesystem::current_path().string().c_str());
 
-	// Create shader programs
-	RenderObjProgram = LoadShaderProgram("Assets/Shaders/TextureNormPos.vert", "Assets/Shaders/lit.frag");
+	// --- Set a simple camera ---
+	// Identity view, ortho projection covering [-1,1]
+	GCamera.view = glm::mat4(1.0f);
+	GCamera.proj = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f);
+
+	// Program (shader resource)
+	RenderObjProgram = LoadShaderProgram("Assets/Shaders/Temp/quad.vert", "Assets/Shaders/Temp/quad.frag");
+
+	// Create one material for the loaded program (holds shader, texture information)
+	MaterialID quadMat = CreateMaterial(RenderObjProgram, 0);
+
+	// Demo, create a basic quad mesh.
+	MeshID quadMesh = CreateQuadMesh();
+
+	CreateRenderEntity(quadMesh, quadMat, glm::vec3(0, 0, 0));
+
+	// Debug
+	ValidateREntityArrayAlignment();
+
+	// Init frame context (instance VBO etc.)
+	InitFrameContext(GFrame);
 
 	Log("Resources finished loading.");
 }
 
 export void RenderLoop()
 {
-	// Renderer configuration
-	glEnable(GL_DEPTH_TEST);
-	glClear(GL_COLOR_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-	glDepthFunc(GL_LEQUAL);
-	glDisable(GL_CULL_FACE);
-	glEnable(GL_MULTISAMPLE);
-	//glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // Make cursor disabled upon startup.
-
+	Log("Starting Render Loop...");
 	while (glfwWindowShouldClose(MainWindow) == false)
 	{
-		Update();
+		glfwPollEvents();
 
 		Render();
 	}
 }
 
-export void CleanUpAndShutdown()
-{
-	glfwDestroyWindow(MainWindow);
-	glfwTerminate();
-}
-
-// Private helpers
-void Update()
-{
-	glfwPollEvents();
-}
-
 void Render()
 {
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	GFrame.Clear();
+
+	// RendererPipeline Steps
+	UpdateTransforms();
+	CheckVisibility(GFrame);
+	BuildRenderItems(GFrame);
+	SortAndBatch(GFrame);
+	ExecuteCommands(GFrame);
 
 	glfwSwapBuffers(MainWindow);
+}
+
+export void CleanUpAndShutdown()
+{
+	Log("Renderer Shutdown Initiated...");
+
+	glfwDestroyWindow(MainWindow);
+	glfwTerminate();
+
+	Log("Renderer Shutdown Successful.");
 }
