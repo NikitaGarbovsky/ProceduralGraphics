@@ -21,7 +21,7 @@ import RendererAssetPipeline;
 void Render();
 void LoadResources();
 
-// Global accessible info for the 
+// Global accessible info for the renderer pipeline
 static FrameContext GFrame;
 
 export bool InitRenderer()
@@ -118,11 +118,25 @@ void Render()
 	GFrame.Clear();
 
 	// RendererPipeline Steps
-	UpdateTransforms();
-	CheckVisibility(GFrame);
-	BuildRenderItems(GFrame);
-	SortAndBatch(GFrame);
-	ExecuteCommands(GFrame);
+	UpdateTransformsAndViewFrustrum(GFrame); // 1 
+
+	/*size_t value1 = CurrentRenderedEntitys.size();
+	std::string str1 = "Current rendereable entities: ";
+	str1 += std::to_string(value1);
+	const char* c_str1 = str1.c_str();
+	Log(c_str1);*/
+
+	CheckVisibility(GFrame); // 2
+
+	/*size_t value2 = GFrame.visible.size();
+	std::string str = "After Visibility Test: ";
+	str += std::to_string(value2);
+	const char* c_str2 = str.c_str();
+	Log(c_str2);*/
+
+	BuildRenderItems(GFrame); // 3 
+	SortAndBatch(GFrame); // 4
+	ExecuteCommands(GFrame); // 5 
 
 	glfwSwapBuffers(MainWindow);
 }

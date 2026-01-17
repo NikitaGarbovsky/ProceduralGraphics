@@ -3,6 +3,9 @@
 #include <glew.h>
 #include <glm.hpp>
 
+/// <summary>
+/// The REntity module manages the data, references & management of REntitys.
+/// </summary>
 export module RendererEntitys;
 
 // ID's are array indices into our renderer tables.
@@ -27,6 +30,12 @@ export struct TransformData {
 	std::vector<glm::mat4> worldMatrix; // (model matrix) computed per frame 
 };
 
+// Bounds used for visiblity tests (frustrum culling).
+export struct Bounds {
+	glm::vec3 center{0,0,0}; // center of bounding sphere 
+	float radius = 1.0; // sphere radius
+};
+
 // Persistent GPU resource.
 // Stored once and referenced by MESHID from entities.
 export struct Mesh {
@@ -34,16 +43,12 @@ export struct Mesh {
 	GLuint vbo = 0; // vertex buffer object
 	GLuint ebo = 0; // element/index buffer object
 	uint32_t indexCount = 0; // number of indices to draw (glDrawElements*)
-};
 
-// Bounds used for visiblity tests (frustrum culling).
-export struct Bounds { // #TODO implement frustrum culling
-	glm::vec3 center{0,0,0}; // center of bounding sphere 
-	float radius = 1.0; // sphere radius
+	Bounds localBounds; // The bounds of this mesh, (used for frustrum culling)
 };
 
 // Render state used to draw something.
-// In a scalable renderer this can include: textures, render flags, blend/depth states, parameters.
+// TODO# In a scalable renderer this can include: textures, render flags, blend/depth states, parameters.
 // For now: one shader program + one texture slot, plus cached uniform locations.
 export struct Material {
 	GLuint program = 0; // OpenGL shader program handle
@@ -55,7 +60,7 @@ export struct Material {
 };
 
 // Simple camera data currently set in Load Resources.
-// Probably move this when you need to
+// TODO# Probably move this when you need to
 export struct CameraData {
 	glm::mat4 view{ 1.0f };
 	glm::mat4 proj{ 1.0f };
@@ -65,7 +70,6 @@ export struct CameraData {
 export std::vector<REntity> CurrentRenderedEntitys;
 export TransformData EntityTransforms; // Transform SoA table. entity.transform indexes into theses arrays.
 export std::vector<Mesh> REntityMeshs; // Persistent GPU mesh resources. entity.mesh indexes into this array.
-export std::vector<Bounds> REntityBounds; // #TODO for frustrum culling
 export std::vector<Material> REntityMaterials; // Material resources used for rendering.
 export CameraData GCamera; // Active camera for the current frame/pass.
 
@@ -82,9 +86,6 @@ export uint32_t CreateRenderEntity(MeshID _meshID, MaterialID _materialID, glm::
 	EntityTransforms.rotation.push_back({ 0,0,0 });
 	EntityTransforms.scale.push_back({ 1,1,1 });
 	EntityTransforms.worldMatrix.push_back(glm::mat4(1.0f));
-
-	// Append new bounds data.
-	REntityBounds.push_back(Bounds{ {0,0,0}, 1.0f });
 
 	return id;
 }

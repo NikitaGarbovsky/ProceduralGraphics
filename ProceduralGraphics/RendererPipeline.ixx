@@ -17,20 +17,31 @@ import <gtc/matrix_transform.hpp>;
 import <gtc/type_ptr.hpp>;
 
 // Function prototypes
-void UpdateTransforms();                            // Step 1
-void CheckVisibility(FrameContext& _f);             // Step 2
-void BuildRenderItems(FrameContext& _f);            // Step 3
-void SortAndBatch(FrameContext& _f);                // Step 4
-void ExecuteCommands(FrameContext& _f);             // Step 5
+void UpdateTransformsAndViewFrustrum(FrameContext& _f);         // Step 1
+void CheckVisibility(FrameContext& _f);                         // Step 2
+void BuildRenderItems(FrameContext& _f);                        // Step 3
+void SortAndBatch(FrameContext& _f);                            // Step 4
+void ExecuteCommands(FrameContext& _f);                         // Step 5
+static bool SphereInFrustum(const glm::vec3& _center, float _radius, const glm::vec4 _planes[6]);
+static void ExtractFrustumPlanes(const glm::mat4& _vp, glm::vec4 _outPlanes[6]);
 
 // Helper
 static uint64_t MakeSortKey(MaterialID _material, MeshID _mesh) {
-    // Sort primarily by program, then vao, then texture
+    // Sort by material then mesh
     return (uint64_t(_material) << 32) | uint64_t(_mesh);
 }
 
-// Step 1: Compute Ready-To-Render transform data.
-export void UpdateTransforms() {
+// Step 1: Compute Ready-To-Render data.
+export void UpdateTransformsAndViewFrustrum(FrameContext& _f) {
+
+    // Compute frustum planes once per frame
+    _f.view = GCamera.view;
+    _f.proj = GCamera.proj;
+
+    _f.viewProj = _f.proj * _f.view;
+
+    // This caches the view frustrum so 
+    ExtractFrustumPlanes(_f.viewProj, _f.frustrumPlanes); 
 
     // Loops through all of the entity transforms and update their transforms.
     for (size_t i = 0; i < EntityTransforms.worldMatrix.size(); i++) {
@@ -55,13 +66,31 @@ export void UpdateTransforms() {
 
 // Step 2: Decide which render entities are worth to consider sending to the GPU.
 export void CheckVisibility(FrameContext& _frame) {
-
-    // #TODO PLACEHOLDER, add frustrum culling here at a later poiunt.
-
+    
     _frame.visible.clear();
     _frame.visible.reserve(CurrentRenderedEntitys.size()); // #TODO use custom arena allocator here
-    for (uint32_t i = 0; i < (uint32_t)CurrentRenderedEntitys.size(); i++)
-        _frame.visible.push_back(i);
+
+    for (uint32_t entIndex = 0; entIndex < (uint32_t)CurrentRenderedEntitys.size(); entIndex++)
+    {
+        const REntity& e = CurrentRenderedEntitys[entIndex];
+        const Mesh& mesh = REntityMeshs[e.mesh];
+
+        // Transform mesh local bounds center into world space
+        const glm::mat4& M = EntityTransforms.worldMatrix[entIndex];
+        glm::vec3 worldCenter = glm::vec3(M * glm::vec4(mesh.localBounds.center, 1.0f));
+
+        // Conservative world radius: scale local radius by max axis scale
+        glm::vec3 s = EntityTransforms.scale[entIndex];
+        float maxScale = std::max({ std::abs(s.x), std::abs(s.y), std::abs(s.z) });
+        float worldRadius = mesh.localBounds.radius * maxScale;
+
+        // Early out, if objects are completely behind the camera (not visible), just skip frustrum test.
+        glm::vec3 toObj = worldCenter - _frame.cameraPos;
+        if (glm::dot(_frame.cameraForward, toObj) < -worldRadius) continue;
+
+        if (SphereInFrustum(worldCenter, worldRadius, _frame.frustrumPlanes))
+            _frame.visible.push_back(entIndex);
+    }
 }
 
 // Step 3: Build the per-frame render queue.
@@ -173,10 +202,10 @@ export void SortAndBatch(FrameContext& _frame) {
     _frame.instances.swap(sortedInstances);
 }
 
-static void BindInstanceAttribs(GLuint vao, GLuint instanceVBO, uintptr_t baseByteOffset) {
+static void BindInstanceAttribs(GLuint _vao, GLuint _instanceVBO, uintptr_t _baseByteOffset) {
     // Instance matrix at locations 4,5,6,7 (each a vec4), divisor=1
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+    glBindVertexArray(_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, _instanceVBO);
 
     constexpr GLuint loc = 4;
     constexpr GLsizei stride = sizeof(InstanceData);
@@ -184,7 +213,7 @@ static void BindInstanceAttribs(GLuint vao, GLuint instanceVBO, uintptr_t baseBy
     for (GLuint i = 0; i < 4; i++) {
         glEnableVertexAttribArray(loc + i);
         glVertexAttribPointer(loc + i, 4, GL_FLOAT, GL_FALSE, stride,
-            (const void*)(baseByteOffset + sizeof(float) * 4 * i));
+            (const void*)(_baseByteOffset + sizeof(float) * 4 * i));
         glVertexAttribDivisor(loc + i, 1);
     }
 }
@@ -219,9 +248,9 @@ export void ExecuteCommands(FrameContext& _frame) {
             glUseProgram(mat.program);
             lastProgram = mat.program;
 
-            // Upload per-frame uniforms (camera) once per program.
-            if (mat.uView >= 0) glUniformMatrix4fv(mat.uView, 1, GL_FALSE, glm::value_ptr(GCamera.view));
-            if (mat.uProj >= 0) glUniformMatrix4fv(mat.uProj, 1, GL_FALSE, glm::value_ptr(GCamera.proj));
+            // Upload per-frame uniforms once per program.
+            if (mat.uView >= 0) glUniformMatrix4fv(mat.uView, 1, GL_FALSE, glm::value_ptr(_frame.view));
+            if (mat.uProj >= 0) glUniformMatrix4fv(mat.uProj, 1, GL_FALSE, glm::value_ptr(_frame.proj));
         }
 
         // Bind texture only when it changes.
@@ -255,4 +284,40 @@ export void ExecuteCommands(FrameContext& _frame) {
     // Clean up bindings 
     glBindVertexArray(0);
     glUseProgram(0);
+}
+
+// #TODO move this somewhere else
+static bool SphereInFrustum(const glm::vec3& _center, float _radius, const glm::vec4 _planes[6])
+{
+    for (int i = 0; i < 6; i++) {
+        const glm::vec4& p = _planes[i];
+        float dist = p.x * _center.x + p.y * _center.y + p.z * _center.z + p.w;
+        if (dist < -_radius) return false; // completely outside this plane
+    }
+    return true;
+}
+
+// #TODO move this somewhere else
+static void ExtractFrustumPlanes(const glm::mat4& vp, glm::vec4 outPlanes[6])
+{
+    // Build rows from column-major matrix (glm::mat4 is column-major)
+    const glm::vec4 row0(vp[0][0], vp[1][0], vp[2][0], vp[3][0]);
+    const glm::vec4 row1(vp[0][1], vp[1][1], vp[2][1], vp[3][1]);
+    const glm::vec4 row2(vp[0][2], vp[1][2], vp[2][2], vp[3][2]);
+    const glm::vec4 row3(vp[0][3], vp[1][3], vp[2][3], vp[3][3]);
+
+    // Planes: (a,b,c,d) with ax + by + cz + d = 0
+    outPlanes[0] = row3 + row0; // Left
+    outPlanes[1] = row3 - row0; // Right
+    outPlanes[2] = row3 + row1; // Bottom
+    outPlanes[3] = row3 - row1; // Top
+    outPlanes[4] = row3 + row2; // Near  
+    outPlanes[5] = row3 - row2; // Far
+
+    // Normalize planes (so distance tests are correct)
+    for (int i = 0; i < 6; i++) {
+        glm::vec3 n(outPlanes[i]);
+        float len = glm::length(n);
+        if (len > 0.0f) outPlanes[i] /= len;
+    }
 }

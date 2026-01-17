@@ -41,6 +41,14 @@ export struct FrameContext {
 
 	GLuint instanceVBO = 0;
 
+	// Per-frame cached camera/frustrum data
+	glm::mat4 view{ 1.0f };
+	glm::mat4 proj{ 1.0f };
+	glm::mat4 viewProj{ 1.0f };
+	glm::vec3 cameraPos{ 0.0f };
+	glm::vec3 cameraForward{ 0.0f, 0.0f, -1.0f };
+	glm::vec4 frustrumPlanes[6]; // left,right,bottom,top,near,far
+
 	void Clear() {
 		visible.clear();
 		instances.clear();
