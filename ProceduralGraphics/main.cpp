@@ -1,4 +1,4 @@
-import RendererCore;    
+import RendererCore;
 
 int main()
 {

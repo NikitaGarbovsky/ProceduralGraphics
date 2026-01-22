@@ -115,11 +115,13 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <BuildStlModules>true</BuildStlModules>
       <ScanSourceForModuleDependencies>true</ScanSourceForModuleDependencies>
+      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\Assimp\include;$(ProjectDir)Dependencies\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc145-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)Dependencies\Assimp\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -133,23 +135,32 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <BuildStlModules>true</BuildStlModules>
       <ScanSourceForModuleDependencies>true</ScanSourceForModuleDependencies>
+      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\Assimp\include;$(ProjectDir)Dependencies\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;glew32.lib;assimp-vc145-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)Dependencies\Assimp\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="DebugUtilities.ixx" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="RendererAssetPipeline.ixx" />
-    <ClCompile Include="RendererCore.ixx" />
-    <ClCompile Include="RendererData.ixx" />
-    <ClCompile Include="RendererEntitys.ixx" />
-    <ClCompile Include="RendererPipeline.ixx" />
-    <ClCompile Include="RendererUtilities.ixx" />
-    <ClCompile Include="RendererFrame.ixx" />
+    <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-AssimpImport.ixx" />
+    <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-Mesh.ixx" />
+    <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-Textures.ixx" />
+    <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline.ixx" />
+    <ClCompile Include="src\AssetsSaveLoad\StbImage.cpp" />
+    <ClCompile Include="src\DebugUtilities.ixx" />
+    <ClCompile Include="src\RendererCore.ixx" />
+    <ClCompile Include="src\RendererData.ixx" />
+    <ClCompile Include="src\RendererEntitys.ixx" />
+    <ClCompile Include="src\RendererFrame.ixx" />
+    <ClCompile Include="src\RendererPipeline.ixx" />
+    <ClCompile Include="src\RendererUtilities.ixx" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\AssetsSaveLoad\stb_image_write.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

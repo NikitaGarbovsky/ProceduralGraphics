@@ -13,34 +13,54 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\AssetsSaveLoad">
+      <UniqueIdentifier>{ee75367c-64bf-4b2c-8457-a0227efd323f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DebugUtilities.ixx">
+    <ClCompile Include="src\DebugUtilities.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RendererCore.ixx">
+    <ClCompile Include="src\RendererCore.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RendererData.ixx">
+    <ClCompile Include="src\RendererData.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RendererEntitys.ixx">
+    <ClCompile Include="src\RendererEntitys.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RendererUtilities.ixx">
+    <ClCompile Include="src\RendererFrame.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RendererFrame.ixx">
+    <ClCompile Include="src\RendererPipeline.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RendererPipeline.ixx">
+    <ClCompile Include="src\RendererUtilities.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RendererAssetPipeline.ixx">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline.ixx">
+      <Filter>Source Files\AssetsSaveLoad</Filter>
     </ClCompile>
+    <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-AssimpImport.ixx">
+      <Filter>Source Files\AssetsSaveLoad</Filter>
+    </ClCompile>
+    <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-Mesh.ixx">
+      <Filter>Source Files\AssetsSaveLoad</Filter>
+    </ClCompile>
+    <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-Textures.ixx">
+      <Filter>Source Files\AssetsSaveLoad</Filter>
+    </ClCompile>
+    <ClCompile Include="src\AssetsSaveLoad\StbImage.cpp">
+      <Filter>Source Files\AssetsSaveLoad</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\AssetsSaveLoad\stb_image_write.h">
+      <Filter>Source Files\AssetsSaveLoad</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
