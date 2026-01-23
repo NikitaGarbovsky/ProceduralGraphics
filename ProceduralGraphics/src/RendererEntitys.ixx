@@ -60,19 +60,12 @@ export struct Material {
 	GLint uTex0 = -1; // Texture
 };
 
-// Simple camera data currently set in Load Resources.
-// TODO# Probably move this when you need to make a better camera system.
-export struct CameraData {
-	glm::mat4 view{ 1.0f };
-	glm::mat4 proj{ 1.0f };
-};
 
 // All render entities in the scene. Indices are stable and referenced by visiblity lists.
 export std::vector<REntity> CurrentRenderedEntitys;
 export TransformData EntityTransforms; // Transform SoA table. entity.transform indexes into theses arrays.
 export std::vector<Mesh> REntityMeshs; // Persistent GPU mesh resources. entity.mesh indexes into this array.
 export std::vector<Material> REntityMaterials; // Material resources used for rendering.
-export CameraData GCamera; // Active camera for the current frame/pass.
 
 // Creates a REntity 
 export uint32_t CreateRenderEntity(MeshID _meshID, MaterialID _materialID, glm::vec3 _startingPosition)

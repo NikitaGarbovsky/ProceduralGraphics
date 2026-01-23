@@ -12,6 +12,7 @@ export module RendererPipeline;
 // Includes
 import RendererEntitys;
 import RendererFrame;
+import RendererData; // For GCamera
 import <algorithm>;
 import <gtc/matrix_transform.hpp>;
 import <gtc/type_ptr.hpp>;
