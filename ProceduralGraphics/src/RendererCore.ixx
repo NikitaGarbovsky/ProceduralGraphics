@@ -4,10 +4,12 @@ module;
 #include <glew.h>
 #include <glfw3.h>
 #include <glm.hpp>
-#include <ext/matrix_clip_space.hpp>
-#include <ext/matrix_transform.hpp>
 #include <string>
 
+/// <summary>
+/// This module is the "core" of the renderer, containing and combining all renderer logic 
+/// in one sole place. Access, initializing & running the render loop takes place here. 
+/// </summary>
 export module RendererCore;
 
 // Codebase module imports
@@ -18,6 +20,8 @@ import RendererPipeline;
 import RendererEntitys;
 import RendererFrame;
 import RendererAssetPipeline;
+import RendererInput;
+import RendererCamera;
 
 // Function prototypes
 void Render();
@@ -26,6 +30,7 @@ void LoadResources();
 // Global accessible info for the renderer pipeline
 static FrameContext GFrame;
 
+// Initializies the Renderer & GLFW window.
 export bool InitRenderer()
 {
 	Log("Initializing Renderer...");
@@ -35,6 +40,7 @@ export bool InitRenderer()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+	glfwWindowHint(GLFW_SAMPLES, 8); // For MSAA
 
 	MainWindow = glfwCreateWindow(1920, 1080, "Procedural Graphics", NULL, NULL);
 	if (MainWindow == NULL)
@@ -64,8 +70,12 @@ export bool InitRenderer()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glDepthFunc(GL_LEQUAL);
 	glDisable(GL_CULL_FACE);
-	glEnable(GL_MULTISAMPLE);
-	//glfwSetInputMode(MainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // Make cursor disabled upon startup.
+	glEnable(GL_MULTISAMPLE); // For MSAA
+
+	// Intialize Input & Camera
+	InitInput(MainWindow);
+	GEditorCam = {};
+	SetPerspective(GEditorCam, 90.0f, 1920.0f / 1080.0f, 0.1f, 1000.0f);
 
 	Log("Renderer Succussfully Initialized");
 	
@@ -77,17 +87,11 @@ export void LoadResources()
 {
 	Log("Loading Resources...");
 
-	// Configure basic camera.
-	GCamera.view = glm::lookAt(glm::vec3(0, 1.5f, 4.0f),
-		glm::vec3(0, 1.0f, 0),
-		glm::vec3(0, 1, 0));
-	GCamera.proj = glm::perspective(glm::radians(60.0f),
-		1920.0f / 1080.0f,
-		0.1f, 1000.0f);
-
+	// Create a dumby program thats used for rendering a model.
 	RenderObjProgram = LoadShaderProgram("Assets/Shaders/Temp/model.vert",
 										 "Assets/Shaders/Temp/model.frag");
 
+	// Load model & create a REntity
 	LoadModel_AsREntities_P3N3Uv2("Assets/Models/Soldier.glb", RenderObjProgram, glm::vec3(-1,0,-1));
 
 	// Debug
@@ -99,12 +103,28 @@ export void LoadResources()
 	Log("Resources Successfully loaded.");
 }
 
+
 export void RenderLoop()
 {
+	gLastTime = glfwGetTime();
 	Log("Starting Render Loop...");
 	while (glfwWindowShouldClose(MainWindow) == false)
 	{
+		// Input is registered at beginning of frame.
+		FrameInputReset(MainWindow);
+
 		glfwPollEvents();
+
+		// Update delta time
+		double now = glfwGetTime();
+		float dt = (float)(now - gLastTime);
+		gLastTime = now;
+
+		// Update camera
+		UpdateEditorCamera(GEditorCam, MainWindow, dt, 1920, 1080);
+		GCamera.view = GEditorCam.view;
+		// #TODO: When Scene View viewport with imgui is implemented, update proj from that viewport's size.
+		GCamera.proj = GEditorCam.proj;
 
 		Render();
 	}

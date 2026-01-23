@@ -62,7 +62,7 @@ bool LoadModel_AsREntities_P3N3Uv2(const char* _path, GLuint _program, glm::vec3
     std::vector<ImportedSubmesh_P3N3Uv2> modelParts;
 
     // Fill that model container with all the data from the file we're loading.
-    ImportGLB_AsSubmeshes_P3N3Uv2(_path, modelParts, _spawnpos);// #TODO forgot why we pass spawnpos here
+    ImportGLB_AsSubmeshes_P3N3Uv2(_path, modelParts);
 
     // Load all meshes and their associated materials, then create a RenderEntity.  
     for (auto& part : modelParts)

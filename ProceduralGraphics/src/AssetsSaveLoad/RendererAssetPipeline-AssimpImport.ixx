@@ -47,7 +47,6 @@ static void ExtractMeshInstance_P3N3Uv2(
     ImportContext& _ctx,
     const aiMesh* _mesh,
     const glm::mat4& _world,
-    glm::vec3 _spawnPos,
     ImportedSubmesh_P3N3Uv2& _out)
 {
     _out.vertices.clear();
@@ -67,7 +66,9 @@ static void ExtractMeshInstance_P3N3Uv2(
         aiVector3D uvA = hasUv0 ? _mesh->mTextureCoords[0][v] : aiVector3D(0, 0, 0);
 
         glm::vec3 p = _world * glm::vec4(pA.x, pA.y, pA.z, 1.0f);
-        p += _spawnPos;
+
+        //p *= unitScale; // #TODO apply different scales depending on file format
+        
         glm::vec3 n = glm::normalize(normalM * glm::vec3(nA.x, nA.y, nA.z));
 
         _out.vertices.insert(_out.vertices.end(), { p.x, p.y, p.z, n.x, n.y, n.z, uvA.x, uvA.y });
@@ -100,8 +101,7 @@ static void TraverseAndExtract(
     ImportContext& _ctx,
     const aiNode* _node,
     const glm::mat4& _parentWorld,
-    std::vector<ImportedSubmesh_P3N3Uv2>& _outSubmeshes,
-    glm::vec3 _spawnPos)
+    std::vector<ImportedSubmesh_P3N3Uv2>& _outSubmeshes)
 {
     glm::mat4 local = assimpAiSceneToGlm(_node->mTransformation);
     glm::mat4 world = _parentWorld * local;
@@ -112,7 +112,7 @@ static void TraverseAndExtract(
         const aiMesh* mesh = _ctx.scene->mMeshes[meshIndex];
 
         ImportedSubmesh_P3N3Uv2 part;
-        ExtractMeshInstance_P3N3Uv2(_ctx, mesh, world, _spawnPos, part);
+        ExtractMeshInstance_P3N3Uv2(_ctx, mesh, world, part);
 
         // Debug
         /*Log(("MeshIndex=" + std::to_string(meshIndex) +
@@ -126,11 +126,11 @@ static void TraverseAndExtract(
 
     // Child meshes were found, complete the same process.
     for (unsigned c = 0; c < _node->mNumChildren; ++c)
-        TraverseAndExtract(_ctx, _node->mChildren[c], world, _outSubmeshes, _spawnPos);
+        TraverseAndExtract(_ctx, _node->mChildren[c], world, _outSubmeshes);
 }
 
 // Imports the file at the designated path, including any and all submeshes.
-bool ImportGLB_AsSubmeshes_P3N3Uv2(const char* _path, std::vector<ImportedSubmesh_P3N3Uv2>& _outSubmeshes, glm::vec3 _spawnPos)
+bool ImportGLB_AsSubmeshes_P3N3Uv2(const char* _path, std::vector<ImportedSubmesh_P3N3Uv2>& _outSubmeshes)
 {
     std::string out = "Loading file: "; out += _path;
     Log(out.c_str());
@@ -167,6 +167,6 @@ bool ImportGLB_AsSubmeshes_P3N3Uv2(const char* _path, std::vector<ImportedSubmes
     ctx.modelDirectory = GetDirectoryFromPath(_path); // #TODO not currently used, perhapes sometime in the future I'll need the path for some reason.
     ctx.whiteTex = 0; // Assigned later
 
-    TraverseAndExtract(ctx, scene->mRootNode, glm::mat4(1.0f), _outSubmeshes, _spawnPos);
+    TraverseAndExtract(ctx, scene->mRootNode, glm::mat4(1.0f), _outSubmeshes);
     return true;
 }

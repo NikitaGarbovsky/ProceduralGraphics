@@ -123,6 +123,7 @@ static GLuint CreateSolidTextureRGBA8(unsigned char _red, unsigned char _green, 
 // Find any textures or colors, then return it.
 export GLuint ResolveAlbedoTexture(ImportContext& _ctx, const aiMaterial* _mat)
 {
+    stbi_set_flip_vertically_on_load(true);
     // 1) Try to load an albedo/basecolor texture
     aiString path;
     if (TryGetFirstTexturePath(_mat, path))

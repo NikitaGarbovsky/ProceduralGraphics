@@ -146,12 +146,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="RendererInput.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-AssimpImport.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-Mesh.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-Textures.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\StbImage.cpp" />
     <ClCompile Include="src\DebugUtilities.ixx" />
+    <ClCompile Include="src\RendererCamera.ixx" />
     <ClCompile Include="src\RendererCore.ixx" />
     <ClCompile Include="src\RendererData.ixx" />
     <ClCompile Include="src\RendererEntitys.ixx" />
@@ -160,7 +162,11 @@
     <ClCompile Include="src\RendererUtilities.ixx" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="resource.h" />
     <ClInclude Include="src\AssetsSaveLoad\stb_image_write.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="ProceduralGraphics.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

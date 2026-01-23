@@ -16,6 +16,9 @@
     <Filter Include="Source Files\AssetsSaveLoad">
       <UniqueIdentifier>{ee75367c-64bf-4b2c-8457-a0227efd323f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Input">
+      <UniqueIdentifier>{e6b7f3f0-7184-4cee-90f4-64157847cc7a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -57,10 +60,24 @@
     <ClCompile Include="src\AssetsSaveLoad\StbImage.cpp">
       <Filter>Source Files\AssetsSaveLoad</Filter>
     </ClCompile>
+    <ClCompile Include="RendererInput.ixx">
+      <Filter>Source Files\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="src\RendererCamera.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\AssetsSaveLoad\stb_image_write.h">
       <Filter>Source Files\AssetsSaveLoad</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="ProceduralGraphics.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>
