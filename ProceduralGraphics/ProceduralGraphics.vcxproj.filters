@@ -19,6 +19,9 @@
     <Filter Include="Source Files\Input">
       <UniqueIdentifier>{e6b7f3f0-7184-4cee-90f4-64157847cc7a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Passes">
+      <UniqueIdentifier>{c6847f7a-7cab-4768-b0af-832e434273e7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -65,6 +68,9 @@
     </ClCompile>
     <ClCompile Include="src\RendererCamera.ixx">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Passes\RendererPass_Opaque.ixx">
+      <Filter>Source Files\Passes</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

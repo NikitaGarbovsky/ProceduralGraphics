@@ -27,9 +27,6 @@ import RendererCamera;
 void Render();
 void LoadResources();
 
-// Global accessible info for the renderer pipeline
-static FrameContext GFrame;
-
 // Initializies the Renderer & GLFW window.
 export bool InitRenderer()
 {
@@ -77,6 +74,9 @@ export bool InitRenderer()
 	GEditorCam = {};
 	SetPerspective(GEditorCam, 90.0f, 1920.0f / 1080.0f, 0.1f, 1000.0f);
 
+	// Initialize the renderer pipeline.
+	InitRendererPipeline();
+
 	Log("Renderer Succussfully Initialized");
 	
 	LoadResources();
@@ -96,9 +96,6 @@ export void LoadResources()
 
 	// Debug
 	ValidateREntityArrayAlignment();
-
-	// Init frame context (instance VBO etc.)
-	InitFrameContext(GFrame);
 
 	Log("Resources Successfully loaded.");
 }
@@ -134,14 +131,8 @@ void Render()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	GFrame.Clear();
-
-	// RendererPipeline Steps
-	UpdateTransformsAndViewFrustrum(GFrame); // 1 
-	CheckVisibility(GFrame); // 2
-	BuildRenderItems(GFrame); // 3 
-	SortAndBatch(GFrame); // 4
-	ExecuteCommands(GFrame); // 5 
+	// RendererPipeline RenderFrame
+	RenderPipeline_RenderFrame(1920, 1080);
 
 	glfwSwapBuffers(MainWindow);
 }
@@ -150,6 +141,7 @@ export void CleanUpAndShutdown()
 {
 	Log("Renderer Shutdown Initiated...");
 
+	ShutdownRendererPipeline();
 	glfwDestroyWindow(MainWindow);
 	glfwTerminate();
 

@@ -12,8 +12,11 @@ module;
 /// 
 /// Press button -> Callback executed -> GInput updated
 /// 
-/// To query input:
-/// if (KeyDown/KeyPressed/KeyReleased) etc 
+/// To query input (place in (polling) update loop):
+/// if (KeyDown/KeyPressed/KeyReleased) etc..
+/// {
+///     DoSomething();
+/// }
 /// </summary> 
 export module RendererInput;
 

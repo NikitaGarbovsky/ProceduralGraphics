@@ -35,7 +35,22 @@ export struct DrawCommand {
 	uint32_t instanceCount = 0;
 };
 
-export struct FrameContext {
+export struct FrameCommon {
+	// Per-frame cached camera/frustrum data
+	glm::mat4 view{ 1.0f };
+	glm::mat4 proj{ 1.0f };
+	glm::mat4 viewProj{ 1.0f };
+
+	glm::vec3 cameraPos{ 0.0f };
+	glm::vec3 cameraForward{ 0.0f,0.0f,-1.0f };
+
+	glm::vec4 frustrumPlanes[6]{}; // left,right,bottom,top,near,far
+
+	int viewportW = 0;
+	int viewportH = 0;
+};
+
+export struct PassContext {
 	// Array of ID's referencing visible render entities for this frame.
 	std::vector<uint32_t> visible; 
 	// Array of big blob of data we send to the GPU 
@@ -45,14 +60,6 @@ export struct FrameContext {
 
 	GLuint instanceVBO = 0;
 
-	// Per-frame cached camera/frustrum data
-	glm::mat4 view{ 1.0f };
-	glm::mat4 proj{ 1.0f };
-	glm::mat4 viewProj{ 1.0f };
-	glm::vec3 cameraPos{ 0.0f };
-	glm::vec3 cameraForward{ 0.0f, 0.0f, -1.0f };
-	glm::vec4 frustrumPlanes[6]; // left,right,bottom,top,near,far
-
 	void Clear() {
 		visible.clear();
 		instances.clear();
@@ -61,12 +68,12 @@ export struct FrameContext {
 	}
 };
 
-export void InitFrameContext(FrameContext& _f)
+export void InitPassContext(PassContext& _f)
 {
 	glGenBuffers(1, &_f.instanceVBO);
 }
 
-export void ShutDownFrameContext(FrameContext& _f)
+export void ShutDownPassContext(PassContext& _f)
 {
 	if (_f.instanceVBO) glDeleteBuffers(1, &_f.instanceVBO);
 	_f.instanceVBO = 0;

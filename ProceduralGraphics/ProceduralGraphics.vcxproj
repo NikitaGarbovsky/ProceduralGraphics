@@ -153,6 +153,7 @@
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\StbImage.cpp" />
     <ClCompile Include="src\DebugUtilities.ixx" />
+    <ClCompile Include="src\Passes\RendererPass_Opaque.ixx" />
     <ClCompile Include="src\RendererCamera.ixx" />
     <ClCompile Include="src\RendererCore.ixx" />
     <ClCompile Include="src\RendererData.ixx" />
