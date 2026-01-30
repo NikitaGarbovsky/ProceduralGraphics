@@ -59,7 +59,7 @@ void UpdateREntityTransforms(PassContext& _p) {
         transformUpdateMatrix = glm::scale(transformUpdateMatrix, scale);
 
         // Apply the matrix.
-        EntityTransforms.worldMatrix[i] = transformUpdateMatrix;
+        EntityTransforms.worldMatrix[i] = GetEntityModelMatrix(i);
     }
 }
 
