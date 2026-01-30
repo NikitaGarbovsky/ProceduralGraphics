@@ -1,4 +1,6 @@
 #include <glew.h>
+#include <string>
+#include <glfw3.h>
 
 /// <summary>
 /// Goal: Submit as few, as well-organized draw calls as possible while drawing
@@ -19,75 +21,149 @@ import RendererEntitys;
 import RendererFrame;
 import RendererData; // For GCamera
 import RendererPass_Opaque;
-
-// Helper used for frustrum culling
-static void ExtractFrustumPlanes(const glm::mat4& vp, glm::vec4 outPlanes[6]);
+import RendererPass_Picking;
+import DebugUtilities;
+import RendererPass_SelectedOutline;
+import RendererPass_SelectedTint;
+import RendererCamera;
+import RendererUtilities;
+import RendererTransformUtils;
 
 // Frame & pass data that is necessary for per-frame rendering.
 static FrameCommon fcommon;
 static PassContext opaquePassContext;
 
+// #TODO: Move all this somewhere outta here.
+static bool gPickRequested = false;
+static bool gPickHasResult = false;
+static int gPickX = 0, gPickY = 0;
+static uint32_t gPickResult = 0; // raw ID from buffer
+
+export void InitRendererPipeline() {
+    InitPassContext(opaquePassContext);   // glGenBuffers
+    InitSelectedOutlinePass();
+    InitSelectedTintPass();
+}
+
+export void ShutdownRendererPipeline() {
+    ShutdownSelectedOutlinePass();
+    ShutdownSelectedTintPass();
+    ShutDownPassContext(opaquePassContext);
+}
+
 // Executes each render pass in sequence per frame.
 export void RenderPipeline_RenderFrame(int _viewportW, int _viewportH) {
-    // ============ Compute all the common stuff the pipeline will use ============
+
+    // ============ Compute all the common stuff the rest pipeline may use during this frame ============
     
-    // Assign viewport size this frame.
+    // Make sure the offscreen viewport target exists at this size
+    EnsureViewportTarget(_viewportW, _viewportH);
+
+    // Render scene into the offscreen viewport FBO
+    glBindFramebuffer(GL_FRAMEBUFFER, ViewportFBO);
+    glViewport(0, 0, _viewportW, _viewportH);
+    glStencilMask(0xFF);   // glClear respects stencil mask
+    glClearStencil(0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+    // Update frame data
     fcommon.viewportW = _viewportW;
     fcommon.viewportH = _viewportH;
-
-    // Grab the current camera view and proj
     fcommon.view = GCamera.view;
     fcommon.proj = GCamera.proj;
-
-    // Combine for usage.
     fcommon.viewProj = fcommon.proj * fcommon.view;
-
-    // Calculate the camera pos & camera forward.
     glm::mat4 invV = glm::inverse(fcommon.view);
     fcommon.cameraPos = glm::vec3(invV[3]);
     fcommon.cameraForward = glm::normalize(-glm::vec3(invV[2])); // forward is -Z
 
-    // This caches the view 
     ExtractFrustumPlanes(fcommon.viewProj, fcommon.frustrumPlanes);
-    // ============ Compute all the common stuff the pipeline will use ============
+
+    opaquePassContext.Clear();
+    // ===========^ Compute all the common stuff the pipeline will use ^===========
     
      
     // -------------- Passes in Order -------------- 
-    opaquePassContext.Clear();
     OpaquePass_Build(fcommon, opaquePassContext);
     OpaquePass_Execute(fcommon, opaquePassContext);
-}
+    
+    // #TODO: Maybe put this in a dedicated picking module.
+    if (gPickRequested) {
+        // Picking Pass requires opaquePassContext
+        PickingPass_Execute(fcommon, opaquePassContext, PickingProgram);
 
-// #TODO move this to a common shared utilities file
-static void ExtractFrustumPlanes(const glm::mat4& vp, glm::vec4 outPlanes[6]) {
-    // Build rows from column-major matrix (glm::mat4 is column-major)
-    const glm::vec4 row0(vp[0][0], vp[1][0], vp[2][0], vp[3][0]);
-    const glm::vec4 row1(vp[0][1], vp[1][1], vp[2][1], vp[3][1]);
-    const glm::vec4 row2(vp[0][2], vp[1][2], vp[2][2], vp[3][2]);
-    const glm::vec4 row3(vp[0][3], vp[1][3], vp[2][3], vp[3][3]);
+        // Read pixel (note: OpenGL origin is bottom-left)
+        uint32_t id = 0;
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, PickingFBO);
+        glReadPixels(gPickX, gPickY, 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &id);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 
-    // Planes: (a,b,c,d) with ax + by + cz + d = 0
-    outPlanes[0] = row3 + row0; // Left
-    outPlanes[1] = row3 - row0; // Right
-    outPlanes[2] = row3 + row1; // Bottom
-    outPlanes[3] = row3 - row1; // Top
-    outPlanes[4] = row3 + row2; // Near  
-    outPlanes[5] = row3 - row2; // Far
-
-    // Normalize planes (so distance tests are correct)
-    for (int i = 0; i < 6; i++) {
-        glm::vec3 n(outPlanes[i]);
-        float len = glm::length(n);
-        if (len > 0.0f) outPlanes[i] /= len;
+        gPickResult = id;        // raw (0 = none)
+        gPickHasResult = true;
+        gPickRequested = false;  // consume request
     }
+
+    SelectedTintPass_Execute(fcommon, SelectedEntity, SelectedTintProgram);
+    SelectedOutlinePass_Execute(fcommon, SelectedEntity, OutlineProgram);
+
+
+    // =========== RENDERED FRAME COMPLETE ===========
+    
+    // Now read and draw all that render data for this frame into the frame buffer object
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, ViewportFBO);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+    glBlitFramebuffer(
+        0, 0, _viewportW, _viewportH,
+        0, 0, _viewportW, _viewportH,
+        GL_COLOR_BUFFER_BIT,
+        GL_NEAREST
+    );
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-export void InitRendererPipeline()
-{
-    InitPassContext(opaquePassContext);   // glGenBuffers
+// #TODO: Maybe move all this picking stuff into their own PickingModule.
+// ===================== Helpers for picking REntity's =====================
+
+static void SetCorrectPixelCoordinatesOnClick(GLFWwindow* _window, int& _outX, int& _outY) {
+    double mx, my;
+    glfwGetCursorPos(_window, &mx, &my);
+
+    int winW, winH, fbW, fbH;
+    glfwGetWindowSize(_window, &winW, &winH);
+    glfwGetFramebufferSize(_window, &fbW, &fbH);
+
+    // Convert window coords to framebuffer pixel coords
+    double sx = (winW > 0) ? (double)fbW / (double)winW : 1.0;
+    double sy = (winH > 0) ? (double)fbH / (double)winH : 1.0;
+
+    int px = int(mx * sx);
+    int py = int(my * sy);
+
+    // OpenGL pixel origin is bottom-left:
+    py = fbH - 1 - py;
+
+    // Clamp
+    px = std::max(0, std::min(px, fbW - 1));
+    py = std::max(0, std::min(py, fbH - 1));
+
+    _outX = px;
+    _outY = py;
 }
 
-export void ShutdownRendererPipeline()
-{
-    ShutDownPassContext(opaquePassContext);
+// Returns raw ID, clears it
+export uint32_t RenderPipeline_ConsumePickResult() {
+    gPickHasResult = false;
+    return gPickResult;
 }
+
+export void RenderPipeline_RequestPick() {
+    gPickRequested = true;
+    SetCorrectPixelCoordinatesOnClick(MainWindow, gPickX, gPickY);
+}
+
+export bool RenderPipeline_HasPickResult() {
+    return gPickHasResult;
+}
+
+// ===================== Helpers for picking REntity's =====================

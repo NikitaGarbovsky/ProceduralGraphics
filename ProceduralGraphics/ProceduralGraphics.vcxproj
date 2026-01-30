@@ -110,12 +110,12 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;IMGUI_DEFINE_MATH_OPERATORS;GLM_ENABLE_EXPERIMENTAL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <BuildStlModules>true</BuildStlModules>
       <ScanSourceForModuleDependencies>true</ScanSourceForModuleDependencies>
-      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\Assimp\include;$(ProjectDir)Dependencies\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\Assimp\include;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\imgui-1.92.5;$(ProjectDir)Dependencies\imgui-1.92.5\backends;$(ProjectDir)Dependencies\ImGuizmo-1.83;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -130,12 +130,12 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;IMGUI_DEFINE_MATH_OPERATORS;GLM_ENABLE_EXPERIMENTAL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <BuildStlModules>true</BuildStlModules>
       <ScanSourceForModuleDependencies>true</ScanSourceForModuleDependencies>
-      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\Assimp\include;$(ProjectDir)Dependencies\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\Assimp\include;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\imgui-1.92.5;$(ProjectDir)Dependencies\imgui-1.92.5\backends;$(ProjectDir)Dependencies\ImGuizmo-1.83;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -145,6 +145,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Dependencies\imgui-1.92.5\backends\imgui_impl_glfw.cpp" />
+    <ClCompile Include="Dependencies\imgui-1.92.5\backends\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="Dependencies\imgui-1.92.5\imgui.cpp" />
+    <ClCompile Include="Dependencies\imgui-1.92.5\imgui_draw.cpp" />
+    <ClCompile Include="Dependencies\imgui-1.92.5\imgui_tables.cpp" />
+    <ClCompile Include="Dependencies\imgui-1.92.5\imgui_widgets.cpp" />
+    <ClCompile Include="Dependencies\ImGuizmo-1.83\ImGuizmo.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="RendererInput.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-AssimpImport.ixx" />
@@ -154,13 +161,19 @@
     <ClCompile Include="src\AssetsSaveLoad\StbImage.cpp" />
     <ClCompile Include="src\DebugUtilities.ixx" />
     <ClCompile Include="src\Passes\RendererPass_Opaque.ixx" />
+    <ClCompile Include="src\Passes\RendererPass_Picking.ixx" />
     <ClCompile Include="src\RendererCamera.ixx" />
     <ClCompile Include="src\RendererCore.ixx" />
     <ClCompile Include="src\RendererData.ixx" />
+    <ClCompile Include="src\RendererEditorUI.ixx" />
     <ClCompile Include="src\RendererEntitys.ixx" />
     <ClCompile Include="src\RendererFrame.ixx" />
+    <ClCompile Include="src\RendererImgui.ixx" />
+    <ClCompile Include="src\RendererPass_SelectedTint.ixx" />
     <ClCompile Include="src\RendererPipeline.ixx" />
+    <ClCompile Include="src\RendererTransformUtils.ixx" />
     <ClCompile Include="src\RendererUtilities.ixx" />
+    <ClCompile Include="src\RendererPass_SelectedOutline.ixx" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />

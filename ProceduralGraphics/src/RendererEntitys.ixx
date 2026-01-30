@@ -2,22 +2,47 @@
 #include <vector>
 #include <glew.h>
 #include <glm.hpp>
+#include <gtc/matrix_transform.hpp>
+#include <gtc/type_ptr.hpp>
 
-/// <summary>
+///
 /// The REntity module manages the data, references & management of REntitys.
-/// </summary>
+/// 
 export module RendererEntitys;
 
 // ID's are array indices into our renderer tables.
 export using TransformID = uint32_t;
 export using MeshID = uint32_t;
 export using MaterialID = uint32_t;
+export using ModelID = uint32_t;
 
-/// <summary> Lightweight record that links together transform + mesh + material.
-/// Each field is an index into its corresponding table. (array) </summary>
+// Bounds used for visiblity tests (frustrum culling).
+export struct Bounds {
+	glm::vec3 center{ 0,0,0 }; // center of bounding sphere 
+	float radius = 1.0; // sphere radius
+};
+
+export struct Primitive {
+	MeshID mesh;
+	MaterialID material;
+};
+
+export struct Model {
+	std::vector<Primitive> primitives;
+	Bounds localBounds;
+};
+
+export struct Submesh {
+	MeshID mesh;
+	MaterialID material;
+};
+
+// An "object" (transform + range into Submeshes)
 export struct REntity {
-	MeshID mesh; // index into REntityMeshs
-	MaterialID material; // index into REntityMaterials
+	uint32_t firstSubmesh = 0; // Id's to find submeshes
+	uint32_t submeshCount = 0;
+
+	Bounds localBounds; // bounds for the whole object (all submeshes combined)
 };
 
 // Transform table stored in SoA form.
@@ -28,12 +53,6 @@ export struct TransformData {
 	std::vector<glm::vec3> rotation; // Euler, #TODO replace with quarternion later
 	std::vector<glm::vec3> scale;	 
 	std::vector<glm::mat4> worldMatrix; // (model matrix) computed per frame 
-};
-
-// Bounds used for visiblity tests (frustrum culling).
-export struct Bounds {
-	glm::vec3 center{0,0,0}; // center of bounding sphere 
-	float radius = 1.0; // sphere radius
 };
 
 // Persistent GPU resource.
@@ -60,21 +79,32 @@ export struct Material {
 	GLint uTex0 = -1; // Texture
 };
 
-
 // All render entities in the scene. Indices are stable and referenced by visiblity lists.
-export std::vector<REntity> CurrentRenderedEntitys;
+export std::vector<REntity> CurrentRenderedEntitys; // (not necessarily Currently Visible (culled))
+export int FrustrumCulledEntitiesThisFrame; // Count of how many entities were frustum cull this frame.
+export std::vector<Submesh> REntitySubmeshes;
+export std::vector<Model> REntityModels;
 export TransformData EntityTransforms; // Transform SoA table. entity.transform indexes into theses arrays.
 export std::vector<Mesh> REntityMeshs; // Persistent GPU mesh resources. entity.mesh indexes into this array.
 export std::vector<Material> REntityMaterials; // Material resources used for rendering.
 
 // Creates a REntity 
-export uint32_t CreateRenderEntity(MeshID _meshID, MaterialID _materialID, glm::vec3 _startingPosition)
+export uint32_t CreateRenderEntity(uint32_t _firstSubmesh,
+	uint32_t _submeshCount,
+	const Bounds& _localBounds,
+	glm::vec3 _startingPosition)
 {
 	// Create the id of this new render entity. (id = size - 1 or the size of the array before appending)
 	uint32_t id = (uint32_t)CurrentRenderedEntitys.size();
 
+	REntity newEntity;
+	newEntity.firstSubmesh = _firstSubmesh;
+	newEntity.submeshCount = _submeshCount;
+	newEntity.localBounds.center = _localBounds.center;
+	newEntity.localBounds.radius = _localBounds.radius;
+
 	// Append a new renderer entity
-	CurrentRenderedEntitys.push_back(REntity{_meshID, _materialID });
+	CurrentRenderedEntitys.push_back(newEntity);
 
 	// Append new transform data.
 	EntityTransforms.position.push_back(_startingPosition);
@@ -93,4 +123,21 @@ export void SetEntityTransform(uint32_t _entityIndex, const glm::vec3 _newPositi
 	if(_newPosition != glm::vec3(0)) EntityTransforms.position[_entityIndex] = _newPosition;
 	if (_newRotation != glm::vec3(0)) EntityTransforms.rotation[_entityIndex] = _newRotation;
 	if (_newScale != glm::vec3(1)) EntityTransforms.scale[_entityIndex] = _newScale;
+}
+
+// Composes a model matrix of an entities data, in use for updating transforms of entities
+export glm::mat4 GetEntityModelMatrix(uint32_t entityId) {
+	const glm::vec3& p = EntityTransforms.position[entityId];
+	const glm::vec3& r = EntityTransforms.rotation[entityId]; // degrees
+	const glm::vec3& s = EntityTransforms.scale[entityId];
+
+	glm::mat4 M(1.0f);
+	M = glm::translate(M, p);
+	// #TODO: Standardise form of rotation matrix across renderer.
+	M = glm::rotate(M, glm::radians(r.z), glm::vec3(0, 0, 1));
+	M = glm::rotate(M, glm::radians(r.y), glm::vec3(0, 1, 0));
+	M = glm::rotate(M, glm::radians(r.x), glm::vec3(1, 0, 0));
+
+	M = glm::scale(M, s);
+	return M;
 }

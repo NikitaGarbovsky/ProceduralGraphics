@@ -2,6 +2,8 @@ module;
 
 #include <algorithm>
 #include <glew.h>
+#include <string>
+#include <gtx/string_cast.hpp>
 
 /// <summary>
 /// The main Opaque pass of the renderering pipeline.
@@ -13,11 +15,10 @@ import RendererEntitys;
 import <gtc/matrix_transform.hpp>;
 import <gtc/type_ptr.hpp>;
 import DebugUtilities;
+import RendererTransformUtils;
 
 // Function prototypes for helpers
-static bool SphereInFrustum(const glm::vec3& _center, float _radius, const glm::vec4 _planes[6]);
 static uint64_t MakeSortKey(MaterialID _material, MeshID _mesh);
-static void BindInstanceAttribs(GLuint _vao, GLuint _instanceVBO, uintptr_t _baseByteOffset);
 
 // Opaque pass steps.
 void UpdateREntityTransforms(PassContext& _p);                  // Step 1
@@ -42,23 +43,9 @@ export void OpaquePass_Execute(const FrameCommon& _f, PassContext& _p)
 
 // Step 1: Compute Ready-To-Render data.
 void UpdateREntityTransforms(PassContext& _p) {
-    // Loops through all of the entity transforms and update their transforms.
+    // Loops through all of the entity transforms and updates them.
     for (size_t i = 0; i < EntityTransforms.worldMatrix.size(); i++) {
-
-        // Grab references to the transform data
-        const auto& position = EntityTransforms.position[i];
-        const auto& rotation = EntityTransforms.rotation[i];
-        const auto& scale = EntityTransforms.scale[i];
-
-        // Create a new matrix, update it with the reference transform data,
-        glm::mat4 transformUpdateMatrix(1.0f);
-        transformUpdateMatrix = glm::translate(transformUpdateMatrix, position);
-        transformUpdateMatrix = glm::rotate(transformUpdateMatrix, rotation.x, glm::vec3(1, 0, 0));
-        transformUpdateMatrix = glm::rotate(transformUpdateMatrix, rotation.y, glm::vec3(0, 1, 0));
-        transformUpdateMatrix = glm::rotate(transformUpdateMatrix, rotation.z, glm::vec3(0, 0, 1));
-        transformUpdateMatrix = glm::scale(transformUpdateMatrix, scale);
-
-        // Apply the matrix.
+        // Update entitiy transform
         EntityTransforms.worldMatrix[i] = GetEntityModelMatrix(i);
     }
 }
@@ -66,10 +53,11 @@ void UpdateREntityTransforms(PassContext& _p) {
 // Step 2: Decide which render entities are worth to consider sending to the GPU.
 void CheckVisibility(FrameCommon& _f, PassContext& _p) {
 
+    FrustrumCulledEntitiesThisFrame = 0;
     _p.visible.clear();
     _p.visible.reserve(CurrentRenderedEntitys.size()); // #TODO use custom arena allocator here
 
-    // Debug to disable culling #TODO just enable this in a UI element when you do so.
+    // Debug to disable culling #TODO just enable this in a UI button when you do so.
     /*for (uint32_t entIndex = 0; entIndex < CurrentRenderedEntitys.size(); entIndex++)
     {
         _frame.visible.push_back(entIndex);
@@ -79,24 +67,40 @@ void CheckVisibility(FrameCommon& _f, PassContext& _p) {
     for (uint32_t entIndex{}; entIndex < (uint32_t)CurrentRenderedEntitys.size(); entIndex++)
     {
         const REntity& e = CurrentRenderedEntitys[entIndex];
-        const Mesh& mesh = REntityMeshs[e.mesh];
+        const Bounds& b = e.localBounds;
 
-        // Transform mesh local bounds center into world space
         const glm::mat4& M = EntityTransforms.worldMatrix[entIndex];
-        glm::vec3 worldCenter = glm::vec3(M * glm::vec4(mesh.localBounds.center, 1.0f));
+        glm::vec3 worldCenter = glm::vec3(M * glm::vec4(b.center, 1.0f));
 
-        // Conservative world radius: scale local radius by max axis scale
         glm::vec3 s = EntityTransforms.scale[entIndex];
         float maxScale = std::max({ std::abs(s.x), std::abs(s.y), std::abs(s.z) });
-        float worldRadius = mesh.localBounds.radius * maxScale;
+        float worldRadius = b.radius * maxScale;
 
         // Early out, if objects are completely behind the camera (not visible), just skip frustrum test.
         glm::vec3 toObj = worldCenter - _f.cameraPos;
-        if (glm::dot(_f.cameraForward, toObj) < -worldRadius) continue;
+        if (glm::dot(_f.cameraForward, toObj) < -worldRadius) {
+            continue;
+        }
 
-        if (SphereInFrustum(worldCenter, worldRadius, _f.frustrumPlanes))
+        bool culled = SphereInFrustum(worldCenter, worldRadius, _f.frustrumPlanes);
+        if (culled)
+        {
+            // Debug output
+            /*std::string str = "Successfully culled Entity: ";
+            str += std::to_string(entIndex + 1);
+            str += "  Center Value = ";
+            str += glm::to_string(worldCenter);
+            std::string str0 = " Radius = ";
+            str0 += std::to_string(worldRadius);
+            Log((str += str0).c_str());*/
+
             _p.visible.push_back(entIndex);
+        }
+            
+        
     }
+    // Updated for the Editor UI.
+    FrustrumCulledEntitiesThisFrame = CurrentRenderedEntitys.size() - _p.visible.size();
 }
 
 // Step 3: Build the per-frame render queue.
@@ -111,31 +115,42 @@ void BuildRenderItems(PassContext& _p) {
     _p.items.clear();
     _p.instances.clear();
 
-    // Allocations (will be removed at some stage)
-    _p.items.reserve(_p.visible.size()); // TODO use custom arena allocator here
-    _p.instances.reserve(_p.visible.size()); // TODO use custom arena allocator here
+    size_t totalPrims = 0;
+    for (uint32_t entIndex : _p.visible){
+        totalPrims += CurrentRenderedEntitys[entIndex].submeshCount;
+    }
+
+    _p.items.reserve(totalPrims); // TODO use custom arena allocator here
+    _p.instances.reserve(totalPrims); // TODO use custom arena allocator here
 
     // For each visible entity: gather render state, write instance payload and emit a RenderItem.
     for (uint32_t entIndex : _p.visible) {
-        // Grab references to the visible render entity, mesh & material using its ID's.
+
         const REntity& e = CurrentRenderedEntitys[entIndex];
-        const Mesh& mesh = REntityMeshs[e.mesh];
-        const Material& mat = REntityMaterials[e.material];
 
-        // Append this visible render entities payload (model matrix) 
-        uint32_t instanceIndex = (uint32_t)_p.instances.size();
-        _p.instances.push_back(InstanceData{ EntityTransforms.worldMatrix[entIndex] });
+        for (uint32_t i = 0; i < e.submeshCount; ++i)
+        {
+            const Submesh& sm = REntitySubmeshes[e.firstSubmesh + i];
+            const Mesh& mesh = REntityMeshs[sm.mesh];
 
-        // Construct the render queue entry
-        RenderItem renderItem;
-        renderItem.material = e.material; // Needed later for cached uniform locations
-        renderItem.mesh = e.mesh;
-        renderItem.indexCount = mesh.indexCount;
-        renderItem.instanceIndex = instanceIndex;
-        renderItem.sortKey = MakeSortKey(renderItem.material, renderItem.mesh);
+            // Append this visible render entities payload (model matrix) 
+            uint32_t instanceIndex = (uint32_t)_p.instances.size();
+            InstanceData inst{};
+            inst.model = EntityTransforms.worldMatrix[entIndex];
+            inst.entityId = entIndex + 1; // SAME ID for all submeshes of this entity
+            _p.instances.push_back(inst);
 
-        // Append it to the frame item array
-        _p.items.push_back(renderItem);
+            // Construct the render queue entry
+            RenderItem it{};
+            it.material = sm.material;
+            it.mesh = sm.mesh;
+            it.indexCount = mesh.indexCount;
+            it.instanceIndex = instanceIndex;
+            it.sortKey = MakeSortKey(it.material, it.mesh);
+
+            // Append it to the frame item array
+            _p.items.push_back(it);
+        }
     }
 }
 
@@ -235,8 +250,11 @@ export void ExecuteCommands(const FrameCommon& _f, PassContext& _p) {
         const Material& mat = REntityMaterials[cmd.material];
         const Mesh& mesh = REntityMeshs[cmd.mesh];
 
+        // Find out if the program has changed,
+        bool programChanged = (mat.program != lastProgram);
+
         // Bind shader program only when it changes.
-        if (mat.program != lastProgram) {
+        if (programChanged) {
             glUseProgram(mat.program);
             lastProgram = mat.program;
 
@@ -246,10 +264,10 @@ export void ExecuteCommands(const FrameCommon& _f, PassContext& _p) {
         }
 
         // Bind texture only when it changes.
-        if (mat.tex0 != lastTex0) {
+        if (programChanged || mat.tex0 != lastTex0) {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, mat.tex0);
-            glUniform1i(mat.uTex0, 0);
+            if (mat.uTex0 >= 0) glUniform1i(mat.uTex0, 0);
             lastTex0 = mat.tex0;
         }
 
@@ -284,31 +302,3 @@ static uint64_t MakeSortKey(MaterialID _material, MeshID _mesh) {
     // Sort by material then mesh
     return (uint64_t(_material) << 32) | uint64_t(_mesh);
 }
-
-static void BindInstanceAttribs(GLuint _vao, GLuint _instanceVBO, uintptr_t _baseByteOffset) {
-    // Instance matrix at locations 4,5,6,7 (each a vec4), divisor=1
-    glBindVertexArray(_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, _instanceVBO);
-
-    constexpr GLuint loc = 4;
-    constexpr GLsizei stride = sizeof(InstanceData);
-
-    for (GLuint i = 0; i < 4; i++) {
-        glEnableVertexAttribArray(loc + i);
-        glVertexAttribPointer(loc + i, 4, GL_FLOAT, GL_FALSE, stride,
-            (const void*)(_baseByteOffset + sizeof(float) * 4 * i));
-        glVertexAttribDivisor(loc + i, 1);
-    }
-}
-
-// #TODO move this to a common shared utilities file
-static bool SphereInFrustum(const glm::vec3& _center, float _radius, const glm::vec4 _planes[6])
-{
-    for (int i = 0; i < 6; i++) {
-        const glm::vec4& p = _planes[i];
-        float dist = p.x * _center.x + p.y * _center.y + p.z * _center.z + p.w;
-        if (dist < -_radius) return false; // completely outside this plane
-    }
-    return true;
-}
-

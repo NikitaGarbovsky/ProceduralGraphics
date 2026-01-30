@@ -39,6 +39,7 @@ struct InputState {
 
 	bool cursorCaptured = false;
 	bool firstMouseSample = true;		 // avoids jump on capture
+    bool currentlyMoving = false;
 };
 
 // Single global input state

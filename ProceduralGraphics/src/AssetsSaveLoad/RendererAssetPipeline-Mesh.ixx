@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <string>
+#include <gtx/string_cast.hpp>
 
 /// <summary>
 /// This module manages the mesh of the asset loading pipeline. It also manages loading the mesh data 
@@ -11,6 +13,7 @@ import RendererEntitys;
 import <cstdint>;
 import <glew.h>;
 import <glm.hpp>;
+import DebugUtilities;
 
 struct VertexLayout
 {
@@ -54,6 +57,11 @@ static Bounds ComputeBounds_Sphere(const float* _vertices, uint32_t _vertexCount
     Bounds b;
     b.center = center;
     b.radius = std::sqrt(r2);
+    // Debug to check if loading of mesh is generating the bounds correctly.
+    /*Log((std::string("Created Bounds for mesh, Radius Size: ") += (std::to_string(b.radius))).c_str());
+
+    Log(("mesh center: " + glm::to_string(b.center) +
+        " r: " + std::to_string(b.radius)).c_str());*/
     return b;
 }
 
@@ -96,6 +104,7 @@ MeshID CreateMeshFromData_P3N3Uv2(
     mesh.indexCount = _indexCount;
     mesh.localBounds = ComputeBounds_Sphere(_vertices, _vertexCount, VertexLayout_P3N3UV2);
 
+    //Log((std::to_string(mesh.localBounds.radius)).c_str());
     MeshID id = (MeshID)REntityMeshs.size();
     REntityMeshs.push_back(mesh);
     return id;

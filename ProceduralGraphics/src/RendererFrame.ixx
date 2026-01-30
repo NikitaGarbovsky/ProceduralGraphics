@@ -14,6 +14,7 @@ import RendererEntitys; // For MaterialID & MeshID
 // Contains a big blob of hot-data that will be send to the GPU. 
 export struct InstanceData {
 	glm::mat4 model;
+	uint32_t entityId;
 };
 
 /// <summary> Render queue entry. </summary>
@@ -77,4 +78,28 @@ export void ShutDownPassContext(PassContext& _f)
 {
 	if (_f.instanceVBO) glDeleteBuffers(1, &_f.instanceVBO);
 	_f.instanceVBO = 0;
+}
+
+// Helper used by passes for matrix passes in. #TODO just combine the matrices into one instea dof using this.
+export void BindInstanceAttribs(GLuint _vao, GLuint _instanceVBO, uintptr_t _baseByteOffset) {
+	// Instance matrix at locations 4,5,6,7 (each a vec4), divisor=1
+	glBindVertexArray(_vao);
+	glBindBuffer(GL_ARRAY_BUFFER, _instanceVBO);
+
+	constexpr GLuint loc = 4;
+	constexpr GLsizei stride = sizeof(InstanceData);
+
+	for (GLuint i = 0; i < 4; i++) {
+		glEnableVertexAttribArray(loc + i);
+		glVertexAttribPointer(loc + i, 4, GL_FLOAT, GL_FALSE, stride,
+			(const void*)(_baseByteOffset + sizeof(float) * 4 * i));
+		glVertexAttribDivisor(loc + i, 1);
+	}
+
+	constexpr GLuint idLoc = 8;
+	glEnableVertexAttribArray(idLoc);
+
+	glVertexAttribIPointer(idLoc, 1, GL_UNSIGNED_INT, sizeof(InstanceData), (const void*)(_baseByteOffset + offsetof(InstanceData, entityId)));
+
+	glVertexAttribDivisor(idLoc, 1);
 }

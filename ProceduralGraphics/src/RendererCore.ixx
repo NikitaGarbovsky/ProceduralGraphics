@@ -8,7 +8,8 @@ module;
 
 /// <summary>
 /// This module is the "core" of the renderer, containing and combining all renderer logic 
-/// in one sole place. Access, initializing & running the render loop takes place here. 
+/// in one single place. Access, initializing & running the render loop (including the rendering pipeline)
+/// takes place here. 
 /// </summary>
 export module RendererCore;
 
@@ -22,14 +23,14 @@ import RendererFrame;
 import RendererAssetPipeline;
 import RendererInput;
 import RendererCamera;
+import RendererEditorUI;
 
 // Function prototypes
 void Render();
 void LoadResources();
 
 // Initializies the Renderer & GLFW window.
-export bool InitRenderer()
-{
+export bool InitRenderer() {
 	Log("Initializing Renderer...");
 
 	// Initialize glfw & the main window
@@ -59,8 +60,9 @@ export bool InitRenderer()
 		return false;
 	}
 
+	// Set Viewport Color
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glViewport(0, 0, 1920, 1080);
+	glViewport(0, 0, 1920, 1080); // #TODO: update these to a setting somewhere.
 
 	// Renderer configuration
 	glEnable(GL_DEPTH_TEST);
@@ -74,8 +76,14 @@ export bool InitRenderer()
 	GEditorCam = {};
 	SetPerspective(GEditorCam, 90.0f, 1920.0f / 1080.0f, 0.1f, 1000.0f);
 
-	// Initialize the renderer pipeline.
+	// Initialize the rendering pipeline.
 	InitRendererPipeline();
+
+	// Initialize the EditorUI
+	InitEditorUI(MainWindow);
+
+	// Initialize Globals
+	gTimeSinceAppStart = glfwGetTime();
 
 	Log("Renderer Succussfully Initialized");
 	
@@ -83,16 +91,20 @@ export bool InitRenderer()
 	return true;
 }
 
-export void LoadResources()
-{
+export void LoadResources() {
 	Log("Loading Resources...");
 
-	// Create a dumby program thats used for rendering a model.
-	RenderObjProgram = LoadShaderProgram("Assets/Shaders/Temp/model.vert",
-										 "Assets/Shaders/Temp/model.frag");
+	// Load each of the shader programs that are used in the renderer.
+	RenderObjProgram = LoadShaderProgram("Assets/Shaders/Temp/model.vert","Assets/Shaders/Temp/model.frag");
+	PickingProgram = LoadShaderProgram("Assets/Shaders/Temp/picking.vert","Assets/Shaders/Temp/picking.frag");
+	OutlineProgram = LoadShaderProgram("Assets/Shaders/Temp/outline.vert","Assets/Shaders/Temp/outline.frag");
+	SelectedTintProgram = LoadShaderProgram("Assets/Shaders/Temp/selectedTint.vert","Assets/Shaders/Temp/selectedTint.frag");
 
-	// Load model & create a REntity
+	// Load model & create a Temporary REntity
 	LoadModel_AsREntities_P3N3Uv2("Assets/Models/Soldier.glb", RenderObjProgram, glm::vec3(-1,0,-1));
+
+	// Load model & create a Temporary REntity
+	LoadModel_AsREntities_P3N3Uv2("Assets/Models/Soldier.glb", RenderObjProgram, glm::vec3(-10, 0, -1));
 
 	// Debug
 	ValidateREntityArrayAlignment();
@@ -100,10 +112,7 @@ export void LoadResources()
 	Log("Resources Successfully loaded.");
 }
 
-
-export void RenderLoop()
-{
-	gLastTime = glfwGetTime();
+export void RenderLoop() {
 	Log("Starting Render Loop...");
 	while (glfwWindowShouldClose(MainWindow) == false)
 	{
@@ -112,35 +121,57 @@ export void RenderLoop()
 
 		glfwPollEvents();
 
-		// Update delta time
-		double now = glfwGetTime();
-		float dt = (float)(now - gLastTime);
-		gLastTime = now;
+		// #TODO move this to a central input location
+		if (KeyDown(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(MainWindow, true);
+
+		UpdateTimeData();
 
 		// Update camera
-		UpdateEditorCamera(GEditorCam, MainWindow, dt, 1920, 1080);
+		UpdateEditorCamera(GEditorCam, MainWindow, gDeltaTime, 1920, 1080);
 		GCamera.view = GEditorCam.view;
 		// #TODO: When Scene View viewport with imgui is implemented, update proj from that viewport's size.
 		GCamera.proj = GEditorCam.proj;
 
+		// Draw 3D Scene
 		Render();
+
+		// Draw Editor UI #TODO move ui and gizmos to their own dedicated render pass.
+		if(!GInput.currentlyMoving)
+			EditorUI_Draw(GCamera.view, GCamera.proj, 1920, 1080, SelectedEntity);
+
+		// #TODO move this to a central input location
+		if (MousePressed(GLFW_MOUSE_BUTTON_LEFT) && !EditorUI_WantsMouse())
+			RenderPipeline_RequestPick();
+
+		glfwSwapBuffers(MainWindow);
+
+		// Consume any picking result that occured during this frame. 
+		if (RenderPipeline_HasPickResult()) {
+			uint32_t id = RenderPipeline_ConsumePickResult();
+			
+			if (id == 0) SelectedEntity = 0xFFFFFFFFu;
+			else SelectedEntity = id - 1;
+		}
 	}
 }
 
-void Render()
-{
+// Renders the 3D scene using the outlayed RenderPipeline
+void Render() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
+	// Grab framebuffer size (main window size)
+	int  fbW, fbH;
+	glfwGetFramebufferSize(MainWindow, &fbW, &fbH);
 
-	// RendererPipeline RenderFrame
-	RenderPipeline_RenderFrame(1920, 1080);
-
-	glfwSwapBuffers(MainWindow);
+	// RendererPipeline RenderFrame, (pass the main window size)
+	RenderPipeline_RenderFrame(fbW, fbH);
 }
 
-export void CleanUpAndShutdown()
-{
+export void CleanUpAndShutdown() {
 	Log("Renderer Shutdown Initiated...");
 
+	ShutdownPickingTarget();
+	ShutdownViewportTarget();
 	ShutdownRendererPipeline();
 	glfwDestroyWindow(MainWindow);
 	glfwTerminate();

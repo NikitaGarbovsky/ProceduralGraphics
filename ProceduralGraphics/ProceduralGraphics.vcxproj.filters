@@ -22,6 +22,9 @@
     <Filter Include="Source Files\Passes">
       <UniqueIdentifier>{c6847f7a-7cab-4768-b0af-832e434273e7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\DearImguiFIles">
+      <UniqueIdentifier>{3b1ceffc-795a-4bf0-aef6-7063e71fb153}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -71,6 +74,45 @@
     </ClCompile>
     <ClCompile Include="src\Passes\RendererPass_Opaque.ixx">
       <Filter>Source Files\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Passes\RendererPass_Picking.ixx">
+      <Filter>Source Files\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\RendererPass_SelectedOutline.ixx">
+      <Filter>Source Files\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\RendererPass_SelectedTint.ixx">
+      <Filter>Source Files\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\RendererImgui.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\RendererTransformUtils.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\RendererEditorUI.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\imgui-1.92.5\imgui.cpp">
+      <Filter>Source Files\DearImguiFIles</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\imgui-1.92.5\imgui_tables.cpp">
+      <Filter>Source Files\DearImguiFIles</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\imgui-1.92.5\imgui_widgets.cpp">
+      <Filter>Source Files\DearImguiFIles</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\ImGuizmo-1.83\ImGuizmo.cpp">
+      <Filter>Source Files\DearImguiFIles</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\imgui-1.92.5\imgui_draw.cpp">
+      <Filter>Source Files\DearImguiFIles</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\imgui-1.92.5\backends\imgui_impl_glfw.cpp">
+      <Filter>Source Files\DearImguiFIles</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\imgui-1.92.5\backends\imgui_impl_opengl3.cpp">
+      <Filter>Source Files\DearImguiFIles</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

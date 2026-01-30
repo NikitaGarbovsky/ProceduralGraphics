@@ -6,12 +6,21 @@ module;
 #include <cstdint>
 #include <glfw3.h>
 
+// This module manages the main rendering camera that is controlled through the viewport.
 export module RendererCamera;
 
 import RendererInput;
 import RendererData;
 
 export enum class CameraMode : uint8_t { Free, Orbit, Ortho }; // #TODO future camera modes. 
+
+// Simple camera data currently set in Load Resources.
+export struct CameraData {
+    glm::mat4 view{ 1.0f };
+    glm::mat4 proj{ 1.0f };
+};
+
+export CameraData GCamera; // Active camera for the current frame/pass.
 
 // Camera data that is needed throughout camera manipulation
 export struct CameraRig
@@ -78,9 +87,6 @@ static void SetCursorCaptured(GLFWwindow* _window, bool _captured)
 // Called per frame before rendering, updates the camera.
 export void UpdateEditorCamera(CameraRig& _camrig, GLFWwindow* _window, float _dt, int _viewportW, int _viewportH)
 {
-    // #TODO move this to a central input location, not located here in a polling camera update.
-    if (KeyDown(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(MainWindow, true);
-
     // Look Input
     if (GInput.cursorCaptured)
     {
@@ -105,19 +111,22 @@ export void UpdateEditorCamera(CameraRig& _camrig, GLFWwindow* _window, float _d
     glm::vec3 move(0.0f);
     if (GInput.cursorCaptured)
     {
-        if (KeyDown(GLFW_KEY_W)) move += _camrig.forward;
+        if (KeyDown(GLFW_KEY_W)) move += _camrig.forward; 
         if (KeyDown(GLFW_KEY_S)) move -= _camrig.forward;
         if (KeyDown(GLFW_KEY_D)) move += _camrig.right;
         if (KeyDown(GLFW_KEY_A)) move -= _camrig.right;
         if (KeyDown(GLFW_KEY_E)) move += worldUp;
         if (KeyDown(GLFW_KEY_Q)) move -= worldUp;
         
-        if (glm::length(move) > 0.0f)
-        {
+        if (glm::length(move) > 0.0f) {
+            GInput.currentlyMoving = true;
             move = glm::normalize(move);
             float speed = _camrig.moveSpeed;
             if (KeyDown(GLFW_KEY_LEFT_SHIFT)) speed *= _camrig.fastMultiplier;
             _camrig.position += move * speed * _dt;
+        }
+        else {
+            GInput.currentlyMoving = false;
         }
     }
 

@@ -5,6 +5,7 @@ module;
 #include <vector>
 #include <fstream>
 #include <assert.h>
+#include <glm.hpp>
 
 /// <summary>
 /// Has all the utility functions that are used in various parts of the renderer codebase.

@@ -4,6 +4,7 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 #include <unordered_map>
+#include <gtx/string_cast.hpp>
 
 /// <summary>
 /// The RendererAssestPipeline module defines a interface to generate a REntity from a loaded assimp file.
@@ -17,7 +18,7 @@ import <cstdint>;
 import <glew.h>;
 import <glm.hpp>;
 
-// Module partitions
+// Module partitions, specifics of parts of the loader go into each respective partition.
 import :Mesh;
 import :Textures;
 import :AssimpImport;
@@ -43,7 +44,7 @@ export MaterialID CreateMaterial(GLuint _program, GLuint _tex0 = 0)
     return id;
 }
 
-// Validation step to confirm a REntity is generated correctly. #TODO probably remove it.
+// Validation step to confirm a REntity is generated correctly. #TODO probably remove it, implement more robust testing.
 export void ValidateREntityArrayAlignment()
 {
 #ifndef NDEBUG
@@ -64,21 +65,48 @@ bool LoadModel_AsREntities_P3N3Uv2(const char* _path, GLuint _program, glm::vec3
     // Fill that model container with all the data from the file we're loading.
     ImportGLB_AsSubmeshes_P3N3Uv2(_path, modelParts);
 
-    // Load all meshes and their associated materials, then create a RenderEntity.  
+    // 1) Remember where this model's submeshes start
+    uint32_t first = (uint32_t)REntitySubmeshes.size();
+    uint32_t count = 0;
+
+    Bounds modelBounds{};
+    bool boundsInit = false;
+
+    glm::vec3 modelMin(FLT_MAX), modelMax(-FLT_MAX);
+
+    // Out of all the submeshes, finds the largest & smallest vertex positions and generate AABB based off them.
+    auto AccumulateModelAABB = [&](const std::vector<float>& _vtx)
+        {
+            // layout is P3 N3 UV2 => 8 floats, pos at 0
+            for (size_t i = 0; i + 7 < _vtx.size(); i += VertexLayout_P3N3UV2.strideFloats)
+            {
+                glm::vec3 p(_vtx[i + 0], _vtx[i + 1], _vtx[i + 2]);
+                modelMin = glm::min(modelMin, p);
+                modelMax = glm::max(modelMax, p);
+            }
+        };
+
+    // 2) Create meshes/materials, and append Submesh entries
     for (auto& part : modelParts)
     {
-    		uint32_t vertexCount = (uint32_t)(part.vertices.size() / VertexLayout_P3N3UV2.strideFloats);
+        uint32_t vertexCount = (uint32_t)(part.vertices.size() / VertexLayout_P3N3UV2.strideFloats);
 
-            // TODO, might want to return this ID at some stage for immediate access.
-    		MeshID meshId = CreateMeshFromData_P3N3Uv2(
-    			part.vertices.data(), vertexCount,
-    			part.indices.data(), (uint32_t)part.indices.size());
+        MeshID meshId = CreateMeshFromData_P3N3Uv2(
+            part.vertices.data(), vertexCount,
+            part.indices.data(), (uint32_t)part.indices.size());
 
-            // TODO, might want to return this ID at some stage for immediate access.
-    		MaterialID matId = CreateMaterial(_program, part.tex0);
+        MaterialID matId = CreateMaterial(_program, part.tex0);
 
-    		CreateRenderEntity(meshId, matId, _spawnpos);
-    	}
+        REntitySubmeshes.push_back(Submesh{ meshId, matId });
+        count++;
+
+        AccumulateModelAABB(part.vertices);
+    }
+    modelBounds.center = (modelMin + modelMax) * 0.5f;
+    modelBounds.radius = glm::length(modelMax - modelBounds.center);
+
+    // 3) Create ONE REntity object that references all those submeshes
+    CreateRenderEntity(first, count, modelBounds, _spawnpos);
 
     return true;
 }
