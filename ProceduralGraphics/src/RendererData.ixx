@@ -13,7 +13,7 @@ export module RendererData;
 // Globals to utilize that are core of the Renderer.
 export GLFWwindow* MainWindow;
 export GLuint RenderObjProgram; 
-export GLuint PickingProgram;
+export GLuint PickingProgram; // SHader that runs the picking program for editor mouse click selection. 
 export GLuint OutlineProgram;
 export GLuint SelectedTintProgram;
 export double gTimeSinceAppStart = 0.0;
@@ -31,10 +31,8 @@ export int ViewportH = 0;
 // ID of the REntity that is currently selected.
 export uint32_t SelectedEntity = UINT32_MAX;
 
-export GLuint PickingFBO = 0; // Used alongside 
-export GLuint PickingIdTex = 0; // GL_R32UI
-export GLuint PickingDepthTex = 0; // DEPTH24
-export int PickingW = 0, PickingH = 0; // Coordinates set for player REntity picking on mouse click;
+// ID of the Light that is currently selected.
+export uint32_t SelectedLight = UINT32_MAX;
 
 // Editable data for selection 
 export float SelectedREntityOutlineScale = 1.02f;
@@ -46,8 +44,6 @@ export glm::vec3 SelectedREntityTintColor(1.0f, 1.0f, 1.0f);
 // Function prototypes. TODO maybe move these to a dedicated viewport management/utils module? 
 export void EnsureViewportTarget(int _w, int _h); // Create or resize viewport render target
 export void ShutdownViewportTarget(); // Shutdown / delete viewport resources
-export void EnsurePickingTarget(int _w, int _h);
-export void ShutdownPickingTarget();
 
 static void DestroyViewportTarget_Internal() {
 	if (ViewportDepthStencilTex) { glDeleteTextures(1, &ViewportDepthStencilTex); ViewportDepthStencilTex = 0; }
@@ -109,71 +105,10 @@ export void EnsureViewportTarget(int _w, int _h) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-static void DestroyPickingTarget_Internal() {
-    if (PickingDepthTex) { glDeleteTextures(1, &PickingDepthTex); PickingDepthTex = 0; }
-    if (PickingIdTex) { glDeleteTextures(1, &PickingIdTex);    PickingIdTex = 0; }
-    if (PickingFBO) { glDeleteFramebuffers(1, &PickingFBO);   PickingFBO = 0; }
-    PickingW = 0;
-    PickingH = 0;
-}
-
-export void EnsurePickingTarget(int _w, int _h) {
-    if (_w <= 0 || _h <= 0) return;
-
-    // No change, viewport is the same size 
-    if (PickingFBO != 0 && PickingW == _w && PickingH == _h)
-        return;
-
-    // Clear prior picking data internals 
-    DestroyPickingTarget_Internal();
-
-    // ======= Validation complete, commence PickingFBO resolve =======
-    PickingW = _w;
-    PickingH = _h;
-
-    glGenFramebuffers(1, &PickingFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, PickingFBO);
-
-    // Color texture (what the editor viewport will display)
-    glGenTextures(1, &PickingIdTex);
-    glBindTexture(GL_TEXTURE_2D, PickingIdTex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, _w, _h, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, PickingIdTex, 0);
-
-    // Depth texture
-    glGenTextures(1, &PickingDepthTex);
-    glBindTexture(GL_TEXTURE_2D, PickingDepthTex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, _w, _h, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, PickingDepthTex, 0);
-
-    GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
-    glDrawBuffers(1, drawBuffers);
-
-    // Validate
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (status != GL_FRAMEBUFFER_COMPLETE)
-    {
-        DestroyPickingTarget_Internal();
-    }
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
 export void ShutdownViewportTarget() {
     DestroyViewportTarget_Internal();
 }
 
-export void ShutdownPickingTarget() { DestroyPickingTarget_Internal(); }
 
 export void UpdateTimeData() {
     double now = glfwGetTime();

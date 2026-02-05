@@ -28,8 +28,7 @@ export MeshID CreateMeshFromData_P3N3Uv2(const float* _vertices, uint32_t _verte
 export bool LoadModel_AsREntities_P3N3Uv2(const char* _path, GLuint _program, glm::vec3 _spawnPos = glm::vec3(0));
 
 // Generates the material data for the given shader program & texture, cache uniforms. #TODO, probably move this somewhere else
-export MaterialID CreateMaterial(GLuint _program, GLuint _tex0 = 0)
-{
+export MaterialID CreateMaterial(GLuint _program, GLuint _tex0 = 0) {
     Material newMaterial{};
     newMaterial.program = _program;
     newMaterial.tex0 = _tex0;
@@ -38,6 +37,7 @@ export MaterialID CreateMaterial(GLuint _program, GLuint _tex0 = 0)
     newMaterial.uView = glGetUniformLocation(_program, "ViewMat");
     newMaterial.uProj = glGetUniformLocation(_program, "ProjectionMat");
     newMaterial.uTex0 = glGetUniformLocation(_program, "Tex0");
+    newMaterial.uCameraPos = glGetUniformLocation(_program, "CameraPos");
 
     MaterialID id = (MaterialID)REntityMaterials.size();
     REntityMaterials.push_back(newMaterial);
@@ -57,8 +57,7 @@ export void ValidateREntityArrayAlignment()
 }
 
 // Main way to parse 3D files (through assimp) and load them into the renderer as REntities
-bool LoadModel_AsREntities_P3N3Uv2(const char* _path, GLuint _program, glm::vec3 _spawnpos)
-{
+bool LoadModel_AsREntities_P3N3Uv2(const char* _path, GLuint _program, glm::vec3 _spawnpos) {
     // Create a container to hold all meshes in the model/3Dscene we're going to load 
     std::vector<ImportedSubmesh_P3N3Uv2> modelParts;
 

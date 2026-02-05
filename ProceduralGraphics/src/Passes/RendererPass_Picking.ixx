@@ -14,7 +14,7 @@ import RendererEntitys;
 import <gtc/matrix_transform.hpp>;
 import <gtc/type_ptr.hpp>;
 import DebugUtilities;
-import RendererData;
+import RendererPicking;
 
 // Runs the picking pass shader program used to select REntities in the scene.
 export void PickingPass_Execute(const FrameCommon& _f, PassContext& _p, GLuint _pickingProgram)
@@ -34,7 +34,7 @@ export void PickingPass_Execute(const FrameCommon& _f, PassContext& _p, GLuint _
 
     glUseProgram(_pickingProgram);
 
-    // Set uniforms #TODO, use cached uniforms instead.
+    // Set uniforms #TODO, use cached uniforms instead. (create init function)
     glUniformMatrix4fv(glGetUniformLocation(_pickingProgram, "ViewMat"), 1, GL_FALSE, glm::value_ptr(_f.view));
     glUniformMatrix4fv(glGetUniformLocation(_pickingProgram, "ProjectionMat"), 1, GL_FALSE, glm::value_ptr(_f.proj));
 

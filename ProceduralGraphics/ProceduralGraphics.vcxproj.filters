@@ -25,6 +25,9 @@
     <Filter Include="Source Files\DearImguiFIles">
       <UniqueIdentifier>{3b1ceffc-795a-4bf0-aef6-7063e71fb153}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\EditorPicking">
+      <UniqueIdentifier>{4e3a1071-735e-46db-ae91-e78f9cb9c526}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -66,9 +69,6 @@
     <ClCompile Include="src\AssetsSaveLoad\StbImage.cpp">
       <Filter>Source Files\AssetsSaveLoad</Filter>
     </ClCompile>
-    <ClCompile Include="RendererInput.ixx">
-      <Filter>Source Files\Input</Filter>
-    </ClCompile>
     <ClCompile Include="src\RendererCamera.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -76,12 +76,6 @@
       <Filter>Source Files\Passes</Filter>
     </ClCompile>
     <ClCompile Include="src\Passes\RendererPass_Picking.ixx">
-      <Filter>Source Files\Passes</Filter>
-    </ClCompile>
-    <ClCompile Include="src\RendererPass_SelectedOutline.ixx">
-      <Filter>Source Files\Passes</Filter>
-    </ClCompile>
-    <ClCompile Include="src\RendererPass_SelectedTint.ixx">
       <Filter>Source Files\Passes</Filter>
     </ClCompile>
     <ClCompile Include="src\RendererImgui.ixx">
@@ -113,6 +107,24 @@
     </ClCompile>
     <ClCompile Include="Dependencies\imgui-1.92.5\backends\imgui_impl_opengl3.cpp">
       <Filter>Source Files\DearImguiFIles</Filter>
+    </ClCompile>
+    <ClCompile Include="src\RendererInput\RendererInput.ixx">
+      <Filter>Source Files\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Passes\RendererPass_SelectedOutline.ixx">
+      <Filter>Source Files\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Passes\RendererPass_SelectedTint.ixx">
+      <Filter>Source Files\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Passes\RendererPass_DebugBounds.ixx">
+      <Filter>Source Files\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\RendererLights.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\RendererPicking.ixx">
+      <Filter>Source Files\EditorPicking</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

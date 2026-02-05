@@ -77,6 +77,8 @@ export struct Material {
 	GLint uView = -1; // ViewMat
 	GLint uProj = -1; // ProjectionMat
 	GLint uTex0 = -1; // Texture
+
+	GLint uCameraPos = -1; // Camera Position #TODO: maybe put this in a UBO for efficient access.
 };
 
 // All render entities in the scene. Indices are stable and referenced by visiblity lists.
@@ -126,10 +128,10 @@ export void SetEntityTransform(uint32_t _entityIndex, const glm::vec3 _newPositi
 }
 
 // Composes a model matrix of an entities data, in use for updating transforms of entities
-export glm::mat4 GetEntityModelMatrix(uint32_t entityId) {
-	const glm::vec3& p = EntityTransforms.position[entityId];
-	const glm::vec3& r = EntityTransforms.rotation[entityId]; // degrees
-	const glm::vec3& s = EntityTransforms.scale[entityId];
+export glm::mat4 GetEntityModelMatrix(uint32_t _entityId) {
+	const glm::vec3& p = EntityTransforms.position[_entityId];
+	const glm::vec3& r = EntityTransforms.rotation[_entityId]; // degrees
+	const glm::vec3& s = EntityTransforms.scale[_entityId];
 
 	glm::mat4 M(1.0f);
 	M = glm::translate(M, p);

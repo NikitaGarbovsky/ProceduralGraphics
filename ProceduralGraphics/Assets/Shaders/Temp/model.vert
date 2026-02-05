@@ -10,13 +10,20 @@ layout (location = 7) in vec4 im3;
 uniform mat4 ViewMat;
 uniform mat4 ProjectionMat;
 
-out vec2 outUV;
-out vec3 outNormal;
+out vec2 v3Uv;
+out vec3 v3Normal;
+out vec3 v3WorldPos;
 
-void main()
-{
+void main() {
 	mat4 model = mat4(im0, im1, im2, im3);
-	outUV = uv;
-	outNormal = mat3(transpose(inverse(model * ViewMat * ProjectionMat))) * normal;
+
+	vec4 worldPos = model * vec4(position, 1.0);
+	v3WorldPos = worldPos.xyz;
+	v3Uv = uv;
+
+	mat3 normalMat = transpose(inverse(mat3(model)));
+	v3Normal = normalize(normalMat * normal);
+
+
 	gl_Position = ProjectionMat * ViewMat * model * vec4(position, 1.0);
 }

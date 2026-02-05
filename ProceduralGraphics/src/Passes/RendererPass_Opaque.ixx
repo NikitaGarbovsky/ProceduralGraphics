@@ -261,6 +261,7 @@ export void ExecuteCommands(const FrameCommon& _f, PassContext& _p) {
             // Upload per-frame uniforms once per program.
             if (mat.uView >= 0) glUniformMatrix4fv(mat.uView, 1, GL_FALSE, glm::value_ptr(_f.view));
             if (mat.uProj >= 0) glUniformMatrix4fv(mat.uProj, 1, GL_FALSE, glm::value_ptr(_f.proj));
+            if (mat.uCameraPos >= 0) glUniform3fv(mat.uCameraPos, 1, glm::value_ptr(_f.cameraPos));
         }
 
         // Bind texture only when it changes.

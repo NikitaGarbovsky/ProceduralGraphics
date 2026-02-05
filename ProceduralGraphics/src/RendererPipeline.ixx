@@ -20,32 +20,35 @@ import <glm.hpp>;
 import RendererEntitys;
 import RendererFrame;
 import RendererData; // For GCamera
-import RendererPass_Opaque;
-import RendererPass_Picking;
-import DebugUtilities;
-import RendererPass_SelectedOutline;
-import RendererPass_SelectedTint;
 import RendererCamera;
 import RendererUtilities;
+import DebugUtilities;
 import RendererTransformUtils;
+import RendererPicking;
+
+// Render Passes
+import RendererPass_Opaque;
+import RendererPass_Picking;
+import RendererPass_SelectedOutline;
+import RendererPass_SelectedTint;
+import RendererPass_DebugBounds;
+import RendererLights;
 
 // Frame & pass data that is necessary for per-frame rendering.
 static FrameCommon fcommon;
 static PassContext opaquePassContext;
 
-// #TODO: Move all this somewhere outta here.
-static bool gPickRequested = false;
-static bool gPickHasResult = false;
-static int gPickX = 0, gPickY = 0;
-static uint32_t gPickResult = 0; // raw ID from buffer
-
 export void InitRendererPipeline() {
     InitPassContext(opaquePassContext);   // glGenBuffers
     InitSelectedOutlinePass();
     InitSelectedTintPass();
+    InitDebugBoundsPass();
+    InitLights();
 }
 
 export void ShutdownRendererPipeline() {
+    ShutdownLights();
+    ShutdownDebugBoundsPass();
     ShutdownSelectedOutlinePass();
     ShutdownSelectedTintPass();
     ShutDownPassContext(opaquePassContext);
@@ -79,32 +82,25 @@ export void RenderPipeline_RenderFrame(int _viewportW, int _viewportH) {
     ExtractFrustumPlanes(fcommon.viewProj, fcommon.frustrumPlanes);
 
     opaquePassContext.Clear();
-    // ===========^ Compute all the common stuff the pipeline will use ^===========
+    // ===========^ Compute all the common stuff the rest pipeline may use during this frame ^===========
     
      
     // -------------- Passes in Order -------------- 
     OpaquePass_Build(fcommon, opaquePassContext);
+    UpdateLights();
     OpaquePass_Execute(fcommon, opaquePassContext);
     
-    // #TODO: Maybe put this in a dedicated picking module.
-    if (gPickRequested) {
+
+    if (PickingIsRequested()) {
         // Picking Pass requires opaquePassContext
         PickingPass_Execute(fcommon, opaquePassContext, PickingProgram);
 
-        // Read pixel (note: OpenGL origin is bottom-left)
-        uint32_t id = 0;
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, PickingFBO);
-        glReadPixels(gPickX, gPickY, 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &id);
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-
-        gPickResult = id;        // raw (0 = none)
-        gPickHasResult = true;
-        gPickRequested = false;  // consume request
+        PickingReadback();
     }
 
     SelectedTintPass_Execute(fcommon, SelectedEntity, SelectedTintProgram);
     SelectedOutlinePass_Execute(fcommon, SelectedEntity, OutlineProgram);
-
+    DebugBoundsPass_Execute(fcommon, SelectedEntity);
 
     // =========== RENDERED FRAME COMPLETE ===========
     
@@ -121,49 +117,3 @@ export void RenderPipeline_RenderFrame(int _viewportW, int _viewportH) {
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
-
-// #TODO: Maybe move all this picking stuff into their own PickingModule.
-// ===================== Helpers for picking REntity's =====================
-
-static void SetCorrectPixelCoordinatesOnClick(GLFWwindow* _window, int& _outX, int& _outY) {
-    double mx, my;
-    glfwGetCursorPos(_window, &mx, &my);
-
-    int winW, winH, fbW, fbH;
-    glfwGetWindowSize(_window, &winW, &winH);
-    glfwGetFramebufferSize(_window, &fbW, &fbH);
-
-    // Convert window coords to framebuffer pixel coords
-    double sx = (winW > 0) ? (double)fbW / (double)winW : 1.0;
-    double sy = (winH > 0) ? (double)fbH / (double)winH : 1.0;
-
-    int px = int(mx * sx);
-    int py = int(my * sy);
-
-    // OpenGL pixel origin is bottom-left:
-    py = fbH - 1 - py;
-
-    // Clamp
-    px = std::max(0, std::min(px, fbW - 1));
-    py = std::max(0, std::min(py, fbH - 1));
-
-    _outX = px;
-    _outY = py;
-}
-
-// Returns raw ID, clears it
-export uint32_t RenderPipeline_ConsumePickResult() {
-    gPickHasResult = false;
-    return gPickResult;
-}
-
-export void RenderPipeline_RequestPick() {
-    gPickRequested = true;
-    SetCorrectPixelCoordinatesOnClick(MainWindow, gPickX, gPickY);
-}
-
-export bool RenderPipeline_HasPickResult() {
-    return gPickHasResult;
-}
-
-// ===================== Helpers for picking REntity's =====================

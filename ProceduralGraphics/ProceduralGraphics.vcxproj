@@ -153,15 +153,17 @@
     <ClCompile Include="Dependencies\imgui-1.92.5\imgui_widgets.cpp" />
     <ClCompile Include="Dependencies\ImGuizmo-1.83\ImGuizmo.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="RendererInput.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-AssimpImport.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-Mesh.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-Textures.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\StbImage.cpp" />
     <ClCompile Include="src\DebugUtilities.ixx" />
+    <ClCompile Include="src\Passes\RendererPass_DebugBounds.ixx" />
     <ClCompile Include="src\Passes\RendererPass_Opaque.ixx" />
     <ClCompile Include="src\Passes\RendererPass_Picking.ixx" />
+    <ClCompile Include="src\Passes\RendererPass_SelectedOutline.ixx" />
+    <ClCompile Include="src\Passes\RendererPass_SelectedTint.ixx" />
     <ClCompile Include="src\RendererCamera.ixx" />
     <ClCompile Include="src\RendererCore.ixx" />
     <ClCompile Include="src\RendererData.ixx" />
@@ -169,11 +171,12 @@
     <ClCompile Include="src\RendererEntitys.ixx" />
     <ClCompile Include="src\RendererFrame.ixx" />
     <ClCompile Include="src\RendererImgui.ixx" />
-    <ClCompile Include="src\RendererPass_SelectedTint.ixx" />
+    <ClCompile Include="src\RendererInput\RendererInput.ixx" />
+    <ClCompile Include="src\RendererLights.ixx" />
+    <ClCompile Include="src\RendererPicking.ixx" />
     <ClCompile Include="src\RendererPipeline.ixx" />
     <ClCompile Include="src\RendererTransformUtils.ixx" />
     <ClCompile Include="src\RendererUtilities.ixx" />
-    <ClCompile Include="src\RendererPass_SelectedOutline.ixx" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />

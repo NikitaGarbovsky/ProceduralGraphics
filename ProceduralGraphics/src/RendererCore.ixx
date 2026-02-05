@@ -24,6 +24,9 @@ import RendererAssetPipeline;
 import RendererInput;
 import RendererCamera;
 import RendererEditorUI;
+import RendererPicking;
+import RendererLights;
+import RendererTransformUtils;
 
 // Function prototypes
 void Render();
@@ -136,21 +139,58 @@ export void RenderLoop() {
 		Render();
 
 		// Draw Editor UI #TODO move ui and gizmos to their own dedicated render pass.
-		if(!GInput.currentlyMoving)
-			EditorUI_Draw(GCamera.view, GCamera.proj, 1920, 1080, SelectedEntity);
+		//if(!GInput.currentlyMoving)
+			EditorUI_Draw(GCamera.view, GCamera.proj, 1920, 1080, SelectedEntity, SelectedLight);
 
 		// #TODO move this to a central input location
 		if (MousePressed(GLFW_MOUSE_BUTTON_LEFT) && !EditorUI_WantsMouse())
-			RenderPipeline_RequestPick();
+		{
+			if (EditorUIIsPlacingLight())
+			{
+				// Just simply spawn the light directly in front of the camera a fixed distance.
+				glm::vec3 spawnPos(GEditorCam.position.x + GEditorCam.forward.x * 0.5, GEditorCam.position.y + GEditorCam.forward.y * 0.5, GEditorCam.position.z + GEditorCam.forward.z * 0.5);
+					
+				uint32_t mode = EditorUIGetPlaceLightMode();
+				uint32_t newLight = UINT32_MAX;
+
+				if (mode == 1) newLight = (uint32_t)CreatePointLight(spawnPos);
+				if (mode == 2) newLight = (uint32_t)CreateDirectionalLight(spawnPos, glm::vec3(0, 0, 0)); // set rot after if you want
+				if (mode == 3) newLight = (uint32_t)CreateSpotLight(spawnPos, glm::vec3(0, 0, 0));
+
+				SelectedLight = newLight;
+				SelectedEntity = UINT32_MAX;
+				
+
+				EditorUIClearPlaceLightMode();
+			}
+			else
+			{
+				PickingRequest(MainWindow);
+			}
+		}
 
 		glfwSwapBuffers(MainWindow);
 
 		// Consume any picking result that occured during this frame. 
-		if (RenderPipeline_HasPickResult()) {
-			uint32_t id = RenderPipeline_ConsumePickResult();
-			
-			if (id == 0) SelectedEntity = 0xFFFFFFFFu;
-			else SelectedEntity = id - 1;
+		if (PickingHasResult())
+		{
+			PickHit hit = PickingConsumeHit();
+
+			if (hit.kind == PickKind::None)
+			{
+				SelectedEntity = UINT32_MAX;
+				SelectedLight = UINT32_MAX;
+			}
+			else if (hit.kind == PickKind::Entity)
+			{
+				SelectedEntity = hit.index;
+				SelectedLight = UINT32_MAX;
+			}
+			else // Light
+			{
+				SelectedLight = hit.index;
+				SelectedEntity = UINT32_MAX;
+			}
 		}
 	}
 }
