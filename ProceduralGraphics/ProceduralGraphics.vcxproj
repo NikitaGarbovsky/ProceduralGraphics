@@ -153,6 +153,7 @@
     <ClCompile Include="Dependencies\imgui-1.92.5\imgui_widgets.cpp" />
     <ClCompile Include="Dependencies\ImGuizmo-1.83\ImGuizmo.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="RendererSkybox.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-AssimpImport.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-Mesh.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-Textures.ixx" />

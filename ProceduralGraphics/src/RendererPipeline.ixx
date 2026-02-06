@@ -33,6 +33,7 @@ import RendererPass_SelectedOutline;
 import RendererPass_SelectedTint;
 import RendererPass_DebugBounds;
 import RendererLights;
+import RendererSkybox;
 
 // Frame & pass data that is necessary for per-frame rendering.
 static FrameCommon fcommon;
@@ -84,13 +85,17 @@ export void RenderPipeline_RenderFrame(int _viewportW, int _viewportH) {
     opaquePassContext.Clear();
     // ===========^ Compute all the common stuff the rest pipeline may use during this frame ^===========
     
-     
-    // -------------- Passes in Order -------------- 
+    
+    // ---------------------------- Passes in Order ----------------------------
+
+    glDepthFunc(GL_LEQUAL);
+    RenderSkybox(); // First render the skybox,
+    glDepthFunc(GL_LESS);
+
     OpaquePass_Build(fcommon, opaquePassContext);
     UpdateLights();
     OpaquePass_Execute(fcommon, opaquePassContext);
     
-
     if (PickingIsRequested()) {
         // Picking Pass requires opaquePassContext
         PickingPass_Execute(fcommon, opaquePassContext, PickingProgram);

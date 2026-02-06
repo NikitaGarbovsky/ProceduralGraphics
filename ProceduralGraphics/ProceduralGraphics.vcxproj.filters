@@ -126,6 +126,9 @@
     <ClCompile Include="src\RendererPicking.ixx">
       <Filter>Source Files\EditorPicking</Filter>
     </ClCompile>
+    <ClCompile Include="RendererSkybox.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\AssetsSaveLoad\stb_image_write.h">

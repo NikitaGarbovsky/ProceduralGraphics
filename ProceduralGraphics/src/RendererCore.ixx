@@ -27,6 +27,7 @@ import RendererEditorUI;
 import RendererPicking;
 import RendererLights;
 import RendererTransformUtils;
+import RendererSkybox;
 
 // Function prototypes
 void Render();
@@ -79,8 +80,8 @@ export bool InitRenderer() {
 	GEditorCam = {};
 	SetPerspective(GEditorCam, 90.0f, 1920.0f / 1080.0f, 0.1f, 1000.0f);
 
-	// Initialize the rendering pipeline.
 	InitRendererPipeline();
+	InitSkybox();
 
 	// Initialize the EditorUI
 	InitEditorUI(MainWindow);
