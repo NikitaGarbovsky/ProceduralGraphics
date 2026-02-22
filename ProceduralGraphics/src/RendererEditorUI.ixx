@@ -1,4 +1,4 @@
-module;
+﻿module;
 
 // Normal imports
 #include <cstdint>
@@ -8,8 +8,11 @@ module;
 #include "imgui.h"
 #include "ImGuizmo.h"
 #include <string>
+#include <filesystem>
+#include <imgui_internal.h>
+#include <cctype> // tolower
 
-// This module manages the renderers editor ui which is using the Dear-Imgui library. 
+// This module manages the renderers editor user interface, which is using the Dear-Imgui library. 
 // Gizmos are created & managed using a seperate library addon for Dear-Imgui. (ImGuizmo)
 export module RendererEditorUI;
 
@@ -20,6 +23,11 @@ import RendererTransformUtils;
 import RendererData;
 import RendererPass_DebugBounds;
 import RendererLights;
+import DebugUtilities;
+import RendererAssetPipeline;
+import RendererCamera;
+
+export bool EditorUIEnabled = false;
 
 // State variables for types of input
 static ImGuizmo::OPERATION gTformGuizmoCurrentOperation = ImGuizmo::TRANSLATE;
@@ -28,8 +36,14 @@ static bool gWantsMouse = false;
 ImFont* glarge_font;
 ImFont* gsmall_font;
 
-static bool showBounds = true;
-static bool BoundsSelectedOnly = true;
+static bool showBounds = false;
+static bool BoundsSelectedOnly = false;
+
+// Asset Browser state
+static bool isAssetBrowserOpen = false;
+static std::filesystem::path AssetRootPath = "Assets/Models";
+static std::filesystem::path CurrentAssetBrowserDirectory = AssetRootPath;
+static char AssetSearchArr[128] = "";
 
 enum class PlaceLightMode : uint32_t { None = 0, Point, Directional, Spot };
 static PlaceLightMode gPlaceLightMode = PlaceLightMode::None;
@@ -39,7 +53,7 @@ export uint32_t EditorUIGetPlaceLightMode() { return (uint32_t)gPlaceLightMode; 
 export void EditorUIClearPlaceLightMode() { gPlaceLightMode = PlaceLightMode::None; }
 static const char* LightPrefix(LightType t);
 
-export void InitEditorUI(GLFWwindow* _window) { 
+export void InitEditorUI(GLFWwindow* _window) {
     ImGui_Init(_window);
     ImGuiIO& io = ImGui::GetIO();
     glarge_font = io.Fonts->AddFontFromFileTTF("Assets/Fonts/AlteHaasGroteskBold.ttf", 24.0f);
@@ -70,25 +84,240 @@ void EditorUI_EndFrame() {
     ImGui_EndFrame();
 }
 
+// ------------------------------ Content Browser helpers ------------------------------
+static bool IsModelFile(const std::filesystem::path& p)
+{
+    auto ext = p.extension().string();
+    for (char& c : ext) c = (char)std::tolower((unsigned char)c);
+    return (ext == ".glb" || ext == ".gltf" || ext == ".fbx" || ext == ".obj");
+}
+
+static bool PassesSearch(const std::filesystem::path& p)
+{
+    if (AssetSearchArr[0] == 0) return true;
+
+    std::string name = p.filename().string();
+    std::string needle = AssetSearchArr;
+    for (char& c : name)   c = (char)std::tolower((unsigned char)c);
+    for (char& c : needle) c = (char)std::tolower((unsigned char)c);
+
+    return name.find(needle) != std::string::npos;
+}
+
+static void GatherChildDirs(const std::filesystem::path& dir, std::vector<std::filesystem::path>& out)
+{
+    out.clear();
+    std::error_code ec;
+    for (auto& e : std::filesystem::directory_iterator(dir, ec))
+    {
+        if (ec) break;
+        if (e.is_directory(ec)) out.push_back(e.path());
+    }
+    std::sort(out.begin(), out.end(),
+        [](auto& a, auto& b) { return a.filename().string() < b.filename().string(); });
+}
+
+static void DrawDirNodeRecursive(const std::filesystem::path& dir)
+{
+    std::vector<std::filesystem::path> kids;
+    GatherChildDirs(dir, kids);
+
+    ImGuiTreeNodeFlags flags =
+        ImGuiTreeNodeFlags_OpenOnArrow |
+        ImGuiTreeNodeFlags_SpanFullWidth;
+
+    if (dir == CurrentAssetBrowserDirectory) flags |= ImGuiTreeNodeFlags_Selected;
+
+    const std::string label = dir.filename().empty()
+        ? dir.string()
+        : dir.filename().string();
+
+    bool open = ImGui::TreeNodeEx(label.c_str(), flags);
+
+    if (ImGui::IsItemClicked())
+        CurrentAssetBrowserDirectory = dir;
+
+    if (open)
+    {
+        for (auto& k : kids)
+            DrawDirNodeRecursive(k);
+
+        ImGui::TreePop();
+    }
+}
+
+static void DrawAssetBrowser()
+{
+    ImGuiViewport* vp = ImGui::GetMainViewport();
+
+    // --- Bottom "Content Browser" TAB  ---
+    ImVec2 tabPos = ImVec2(vp->Pos.x + 12.0f, vp->Pos.y + vp->Size.y - 40.0f);
+    ImVec2 tabSize = ImVec2(160.0f, 28.0f);
+
+    ImGui::SetNextWindowPos(tabPos);
+    ImGui::SetNextWindowSize(tabSize);
+    ImGui::SetNextWindowBgAlpha(0.0f);
+
+    ImGuiWindowFlags tabFlags =
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
+        ImGuiWindowFlags_NoBackground;
+
+    ImGui::Begin("##AssetBrowserTab", nullptr, tabFlags);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+
+    ImGui::PushFont(gsmall_font);
+   
+    if (ImGui::Button("Asset Browser"))
+        isAssetBrowserOpen = !isAssetBrowserOpen;
+
+    ImGui::PopStyleVar(2);
+    ImGui::PopFont();
+
+    ImGui::End();
+
+    if (!isAssetBrowserOpen)
+        return;
+
+    // --- Popup-like window anchored above the tab ---
+    ImVec2 winPos = ImVec2(tabPos.x, tabPos.y - 520.0f);
+    ImVec2 winSize = ImVec2(760.0f, 500.0f);
+
+    ImGui::SetNextWindowPos(winPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(winSize, ImGuiCond_Always);
+
+    ImGuiWindowFlags winFlags =
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoSavedSettings;
+
+    ImGui::Begin("Asset Browser", &isAssetBrowserOpen, winFlags);
+
+    ImGui::PushFont(gsmall_font);
+    
+    ImGui::SetNextItemWidth(240.0f);
+    ImGui::InputTextWithHint("##search", "Search...", AssetSearchArr, IM_ARRAYSIZE(AssetSearchArr));
+    ImGui::Separator();
+
+    
+    float leftW = 240.0f;
+
+    ImGui::BeginChild("##dir_tree", ImVec2(leftW, 0), true);
+    {
+        std::error_code ec;
+        if (!std::filesystem::exists(AssetRootPath, ec) || !std::filesystem::is_directory(AssetRootPath, ec))
+        {
+            ImGui::TextUnformatted("Assets root missing: Assets/Models");
+        }
+        else
+        {
+            ImGuiTreeNodeFlags rootFlags =
+                ImGuiTreeNodeFlags_DefaultOpen |
+                ImGuiTreeNodeFlags_OpenOnArrow |
+                ImGuiTreeNodeFlags_SpanFullWidth;
+
+            if (CurrentAssetBrowserDirectory == AssetRootPath) rootFlags |= ImGuiTreeNodeFlags_Selected;
+
+            bool rootOpen = ImGui::TreeNodeEx("Assets/Models", rootFlags);
+            if (ImGui::IsItemClicked()) CurrentAssetBrowserDirectory = AssetRootPath;
+
+            if (rootOpen)
+            {
+                std::vector<std::filesystem::path> kids;
+                GatherChildDirs(AssetRootPath, kids);
+                for (auto& k : kids) DrawDirNodeRecursive(k);
+                ImGui::TreePop();
+            }
+        }
+    }
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+
+    ImGui::BeginChild("##items", ImVec2(0, 0), true);
+    {
+
+        std::vector<std::filesystem::directory_entry> dirs;
+        std::vector<std::filesystem::directory_entry> files;
+
+        std::error_code ec;
+        for (auto& e : std::filesystem::directory_iterator(CurrentAssetBrowserDirectory, ec))
+        {
+            if (ec) break;
+            if (e.is_directory(ec)) dirs.push_back(e);
+            else files.push_back(e);
+        }
+
+        auto sortByName = [](auto& a, auto& b)
+            {
+                return a.path().filename().string() < b.path().filename().string();
+            };
+
+        std::sort(dirs.begin(), dirs.end(), sortByName);
+        std::sort(files.begin(), files.end(), sortByName);
+
+        // Files
+        for (auto& e : files)
+        {
+            auto p = e.path();
+            if (!IsModelFile(p)) continue;
+            if (!PassesSearch(p)) continue;
+
+            const std::string name = p.filename().string();
+            const std::string fullPath = p.generic_string();
+
+            ImGui::Selectable(name.c_str(), false);
+
+            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+            {
+                ImGui::SetDragDropPayload("MODEL_PATH", fullPath.c_str(), (size_t)fullPath.size() + 1);
+                ImGui::TextUnformatted(name.c_str());
+                ImGui::EndDragDropSource();
+            }
+        }
+    }
+    ImGui::EndChild();
+
+    // Auto-hide only when NOT pinned 
+    bool windowHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+    bool windowFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+    ImGui::PopFont();
+    ImGui::End();
+
+    if (isAssetBrowserOpen)
+    {
+        // Don't auto-close while dragging
+        if (!ImGui::IsDragDropActive())
+        {
+            // Click outside closes
+            if (!windowHovered && !windowFocused && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                isAssetBrowserOpen = false;
+
+            // ESC closes, #TODO maybe Re-add this if you remove esc to close renderer application. 
+            /*if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+                sAssetBrowserOpen = false;*/
+        }
+    }
+}
+
+// Immediate mode UI, draws the entire UI per frame.
 export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _viewportW, int _viewportH, uint32_t _selectedEntityID, uint32_t _selectedLight) {
     EditorUI_BeginFrame();
 
-    // Configuration flags for the DearImgui Entity Menu
     ImGuiWindowFlags windowFlags0 = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
 
     // =========== Entity Window ===========
-    
     ImGui::PushFont(glarge_font);
 
-    // Tempt scaling calculations to keep shit in frame, #TODO: make some sort of system for scaling and aligning/layout of imgui ui.
     int x1, y1;
     glfwGetFramebufferSize(MainWindow, &x1, &y1);
     x1 -= x1 / 6;
-    y1 -= (y1 / 6) *5;
+    y1 -= (y1 / 6) * 5;
     ImVec2 pos = ImVec2((float)x1, (float)y1);
     ImGui::SetNextWindowPos(pos);
     ImGui::SetNextWindowSize(ImVec2(250, 450));
-    ImGui::Begin("====== Entities ======", nullptr ,windowFlags0);
+    ImGui::Begin("Entities", nullptr, windowFlags0);
 
     ImGui::Text("Total Loaded: %u", CurrentRenderedEntitys.size());
     ImGui::Text("Frustum Culled: % u", FrustrumCulledEntitiesThisFrame);
@@ -98,6 +327,7 @@ export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _v
     ImGui::Checkbox("Bounds: Selected Only", &BoundsSelectedOnly);
     DebugBoundsSetEnabled(showBounds);
     DebugBoundsSetSelectedOnly(BoundsSelectedOnly);
+
     if (ImGui::BeginListBox("##entity_list", ImVec2(-1, 120)))
     {
         for (uint32_t i = 0; i < CurrentRenderedEntitys.size(); ++i) {
@@ -113,26 +343,24 @@ export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _v
     }
 
     ImGui::PopFont();
-    
     ImGui::End();
 
-    // Is there an entity selected?  - Display selected entity screen.
+    // =========== Selected Entity Panel ===========
     if (_selectedEntityID != UINT32_MAX) {
         ImGui::PushFont(glarge_font);
         std::string str = "Entity: ";
         str += std::to_string(_selectedEntityID + 1);
         ImGui::SetNextWindowSize(ImVec2(250, 200));
 
-        // Positioning Calculations
         int x, y;
         glfwGetFramebufferSize(MainWindow, &x, &y);
         x -= x / 6;
         y -= (y / 5) * 2;
 
-        ImVec2 pos = ImVec2((float)x, (float)y);
-        ImGui::SetNextWindowPos(pos);
+        ImVec2 pos2 = ImVec2((float)x, (float)y);
+        ImGui::SetNextWindowPos(pos2);
         ImGui::Begin(str.c_str(), nullptr, windowFlags0);
-        
+
         ImGui::DragFloat("X", &EntityTransforms.position[_selectedEntityID].x);
         ImGui::DragFloat("Y", &EntityTransforms.position[_selectedEntityID].y);
         ImGui::DragFloat("Z", &EntityTransforms.position[_selectedEntityID].z);
@@ -140,15 +368,15 @@ export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _v
         ImGui::PopFont();
         ImGui::End();
     }
-    
-    // =========== Lights Window ===========
+
+    // =========== Lights Windows ===========
     ImGuiWindowFlags windowFlagsL = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
 
     ImGui::SetNextWindowPos(ImVec2(20, 20));
     ImGui::SetNextWindowSize(ImVec2(280, 220));
     ImGui::Begin("Create", nullptr, windowFlagsL);
     ImGui::PushFont(gsmall_font);
-    ImGui::Text("Average %.3f ms/frame (%.1f FPS)",
+    ImGui::Text("%.2f ms/frame (%.1f FPS)",
         1000.0f / ImGui::GetIO().Framerate,
         ImGui::GetIO().Framerate);
 
@@ -169,13 +397,16 @@ export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _v
 
     ImGui::SetNextWindowPos(ImVec2(20, 250));
     ImGui::SetNextWindowSize(ImVec2(280, 220));
+    
     ImGui::Begin("Lights", nullptr, windowFlagsL);
+    
     uint32_t lightCount = GetLightCount();
+    ImGui::PushFont(gsmall_font);
     ImGui::Text("Total Lights: %u", lightCount);
 
     if (ImGui::BeginListBox("##light_list", ImVec2(-1, 120)))
     {
-        for (uint32_t i = 0; i < lightCount; ++i) { 
+        for (uint32_t i = 0; i < lightCount; ++i) {
             LightType t = GetLightType(i);
             std::string label = std::string(LightPrefix(t)) + std::to_string(i);
 
@@ -188,6 +419,7 @@ export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _v
         }
         ImGui::EndListBox();
     }
+    ImGui::PopFont();
     ImGui::End();
 
     if (_selectedLight != UINT32_MAX && _selectedLight < lightCount)
@@ -226,13 +458,13 @@ export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _v
 
         ImGui::End();
     }
-   
+
+    // Content Browser 
+    DrawAssetBrowser();
 
     GizmoShortcuts();
 
-    // =========== Gizmo ===========
-
-    // Entity gizmo
+    // =========== Gizmos ===========
     if (_selectedEntityID != UINT32_MAX)
     {
         glm::mat4 modelMatrix = ComposeTRSMatrix(
@@ -265,7 +497,6 @@ export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _v
             EntityTransforms.scale[_selectedEntityID] = { s[0], s[1], s[2] };
         }
     }
-    // Light gizmo
     else if (_selectedLight != UINT32_MAX)
     {
         glm::mat4 modelMatrix = ComposeTRSMatrix(
@@ -297,6 +528,42 @@ export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _v
             LightTransforms.rotation[_selectedLight] = { r[0], r[1], r[2] };
             LightTransforms.scale[_selectedLight] = { s[0], s[1], s[2] };
         }
+    }
+
+    // Drop target overlay 
+    if (ImGui::IsDragDropActive())
+    {
+        ImGuiViewport* vp = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos({ 0,0 });
+        ImGui::SetNextWindowSize(vp->Size);
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing;
+
+        ImGui::Begin("viewport_drop_target", nullptr, flags);
+
+        ImGui::InvisibleButton("##drop_area", vp->Size);
+
+        if (ImGui::BeginDragDropTarget())
+        {
+            if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload(
+                "MODEL_PATH",
+                ImGuiDragDropFlags_AcceptBeforeDelivery))
+            {
+                const char* path = static_cast<const char*>(p->Data);
+
+                if (p->IsDelivery())
+                {
+                    std::string droppedPath(path ? path : "");
+                    glm::vec3 spawnPos = GEditorCam.position + GEditorCam.forward * 10.0f;
+                    LoadModel_AsREntities_P3N3Uv2(droppedPath.c_str(), RenderObjProgram, spawnPos);
+                }
+            }
+            ImGui::EndDragDropTarget();
+        }
+        ImGui::End();
     }
 
     gWantsMouse = ImGui_WantsMouse() || ImGuizmo::IsOver() || ImGuizmo::IsUsing();

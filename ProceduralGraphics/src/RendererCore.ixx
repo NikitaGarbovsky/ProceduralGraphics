@@ -105,10 +105,12 @@ export void LoadResources() {
 	SelectedTintProgram = LoadShaderProgram("Assets/Shaders/Temp/selectedTint.vert","Assets/Shaders/Temp/selectedTint.frag");
 
 	// Load model & create a Temporary REntity
-	LoadModel_AsREntities_P3N3Uv2("Assets/Models/Soldier.glb", RenderObjProgram, glm::vec3(-1,0,-1));
+	LoadModel_AsREntities_P3N3Uv2("Assets/Models/Soldier.glb", RenderObjProgram, glm::vec3(-1, 1, -1));
 
 	// Load model & create a Temporary REntity
-	LoadModel_AsREntities_P3N3Uv2("Assets/Models/Soldier.glb", RenderObjProgram, glm::vec3(-10, 0, -1));
+	LoadModel_AsREntities_P3N3Uv2("Assets/Models/Soldier.glb", RenderObjProgram, glm::vec3(-10, 1, -1));
+
+	LoadModel_AsREntities_P3N3Uv2("Assets/Models/plane.fbx", RenderObjProgram, glm::vec3(0, 0, 0));
 
 	// Debug
 	ValidateREntityArrayAlignment();
@@ -127,6 +129,7 @@ export void RenderLoop() {
 
 		// #TODO move this to a central input location
 		if (KeyDown(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(MainWindow, true);
+		if (KeyPressed(GLFW_KEY_F2)) EditorUIEnabled = !EditorUIEnabled; // Enable/Disable Editor UI.
 
 		UpdateTimeData();
 
@@ -140,11 +143,11 @@ export void RenderLoop() {
 		Render();
 
 		// Draw Editor UI #TODO move ui and gizmos to their own dedicated render pass.
-		//if(!GInput.currentlyMoving)
+		if(EditorUIEnabled)
 			EditorUI_Draw(GCamera.view, GCamera.proj, 1920, 1080, SelectedEntity, SelectedLight);
 
 		// #TODO move this to a central input location
-		if (MousePressed(GLFW_MOUSE_BUTTON_LEFT) && !EditorUI_WantsMouse())
+		if (MousePressed(GLFW_MOUSE_BUTTON_LEFT) && !EditorUI_WantsMouse() && EditorUIEnabled)
 		{
 			if (EditorUIIsPlacingLight())
 			{
