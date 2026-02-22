@@ -159,7 +159,12 @@
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-Textures.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\StbImage.cpp" />
-    <ClCompile Include="src\DebugUtilities.ixx" />
+    <ClCompile Include="src\DebugAndUtilities\DebugUtilities.ixx" />
+    <ClCompile Include="src\DebugAndUtilities\RendererEditorUI.ixx" />
+    <ClCompile Include="src\DebugAndUtilities\RendererImgui.ixx" />
+    <ClCompile Include="src\DebugAndUtilities\RendererPicking.ixx" />
+    <ClCompile Include="src\DebugAndUtilities\RendererTransformUtils.ixx" />
+    <ClCompile Include="src\DebugAndUtilities\RendererUtilities.ixx" />
     <ClCompile Include="src\Passes\RendererPass_DebugBounds.ixx" />
     <ClCompile Include="src\Passes\RendererPass_Opaque.ixx" />
     <ClCompile Include="src\Passes\RendererPass_Picking.ixx" />
@@ -168,16 +173,11 @@
     <ClCompile Include="src\RendererCamera.ixx" />
     <ClCompile Include="src\RendererCore.ixx" />
     <ClCompile Include="src\RendererData.ixx" />
-    <ClCompile Include="src\RendererEditorUI.ixx" />
     <ClCompile Include="src\RendererEntitys.ixx" />
     <ClCompile Include="src\RendererFrame.ixx" />
-    <ClCompile Include="src\RendererImgui.ixx" />
     <ClCompile Include="src\RendererInput\RendererInput.ixx" />
     <ClCompile Include="src\RendererLights.ixx" />
-    <ClCompile Include="src\RendererPicking.ixx" />
     <ClCompile Include="src\RendererPipeline.ixx" />
-    <ClCompile Include="src\RendererTransformUtils.ixx" />
-    <ClCompile Include="src\RendererUtilities.ixx" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />

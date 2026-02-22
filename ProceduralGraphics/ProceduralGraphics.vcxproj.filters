@@ -25,15 +25,12 @@
     <Filter Include="Source Files\DearImguiFIles">
       <UniqueIdentifier>{3b1ceffc-795a-4bf0-aef6-7063e71fb153}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\EditorPicking">
-      <UniqueIdentifier>{4e3a1071-735e-46db-ae91-e78f9cb9c526}</UniqueIdentifier>
+    <Filter Include="Source Files\DebugAndUtilities">
+      <UniqueIdentifier>{a6833cec-b536-49d1-bb0f-413d3dff2728}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\DebugUtilities.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\RendererCore.ixx">
@@ -49,9 +46,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\RendererPipeline.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\RendererUtilities.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline.ixx">
@@ -77,15 +71,6 @@
     </ClCompile>
     <ClCompile Include="src\Passes\RendererPass_Picking.ixx">
       <Filter>Source Files\Passes</Filter>
-    </ClCompile>
-    <ClCompile Include="src\RendererImgui.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\RendererTransformUtils.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\RendererEditorUI.ixx">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Dependencies\imgui-1.92.5\imgui.cpp">
       <Filter>Source Files\DearImguiFIles</Filter>
@@ -123,11 +108,26 @@
     <ClCompile Include="src\RendererLights.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\RendererPicking.ixx">
-      <Filter>Source Files\EditorPicking</Filter>
-    </ClCompile>
     <ClCompile Include="RendererSkybox.ixx">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DebugAndUtilities\DebugUtilities.ixx">
+      <Filter>Source Files\DebugAndUtilities</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DebugAndUtilities\RendererEditorUI.ixx">
+      <Filter>Source Files\DebugAndUtilities</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DebugAndUtilities\RendererImgui.ixx">
+      <Filter>Source Files\DebugAndUtilities</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DebugAndUtilities\RendererPicking.ixx">
+      <Filter>Source Files\DebugAndUtilities</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DebugAndUtilities\RendererTransformUtils.ixx">
+      <Filter>Source Files\DebugAndUtilities</Filter>
+    </ClCompile>
+    <ClCompile Include="src\DebugAndUtilities\RendererUtilities.ixx">
+      <Filter>Source Files\DebugAndUtilities</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
