@@ -117,15 +117,9 @@ export uint32_t CreateRenderEntity(uint32_t _firstSubmesh,
 	return id;
 }
 
-// Sets an entities transform based on index
-export void SetEntityTransform(uint32_t _entityIndex, const glm::vec3 _newPosition = glm::vec3(0), 
-												const glm::vec3 _newRotation = glm::vec3(0),		
-												const glm::vec3 _newScale = glm::vec3(1))
-{
-	if(_newPosition != glm::vec3(0)) EntityTransforms.position[_entityIndex] = _newPosition;
-	if (_newRotation != glm::vec3(0)) EntityTransforms.rotation[_entityIndex] = _newRotation;
-	if (_newScale != glm::vec3(1)) EntityTransforms.scale[_entityIndex] = _newScale;
-}
+export void SetEntityPosition(uint32_t _i, const glm::vec3& _p) { EntityTransforms.position[_i] = _p;}
+export void SetEntityRotation(uint32_t _i, const glm::vec3& _r) { EntityTransforms.rotation[_i] = _r; }
+export void SetEntityScale(uint32_t _i, const glm::vec3& _s) { EntityTransforms.scale[_i] = _s; }
 
 // Composes a model matrix of an entities data, in use for updating transforms of entities
 export glm::mat4 GetEntityModelMatrix(uint32_t _entityId) {

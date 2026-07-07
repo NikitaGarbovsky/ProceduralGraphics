@@ -26,6 +26,7 @@ import RendererLights;
 import DebugUtilities;
 import RendererAssetPipeline;
 import RendererCamera;
+import RendererInput;
 
 export bool EditorUIEnabled = false;
 
@@ -65,6 +66,7 @@ export void ShutdownEditorUI() { ImGui_Shutdown(); }
 // Helper to organize input
 static void GizmoShortcuts() {
     if (ImGui_WantsKeyboard()) return;
+    if (GInput.cursorCaptured) return;
 
     if (ImGui::IsKeyPressed(ImGuiKey_W)) gTformGuizmoCurrentOperation = ImGuizmo::TRANSLATE;
     if (ImGui::IsKeyPressed(ImGuiKey_E)) gTformGuizmoCurrentOperation = ImGuizmo::ROTATE;

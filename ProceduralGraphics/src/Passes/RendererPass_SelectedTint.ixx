@@ -45,8 +45,8 @@ static void DrawSelectedTintOnce(const FrameCommon& f, uint32_t ent, GLuint prog
         // Time + pulse params
         glUniform1f(glGetUniformLocation(program, "TimeSeconds"), (float)glfwGetTime());
         glUniform3fv(glGetUniformLocation(program, "TintColor"), 1, glm::value_ptr(SelectedREntityTintColor));
-        glUniform1f(glGetUniformLocation(program, "TintStrength"), 0.65f);
-        glUniform1f(glGetUniformLocation(program, "PulseSpeed"), 4.0f);
+        glUniform1f(glGetUniformLocation(program, "TintStrength"), SelectedREntityTintStrength);
+        glUniform1f(glGetUniformLocation(program, "PulseSpeed"), SelectedREntityTintPulseSpeed);
 
         // Bind selected entity texture
         glActiveTexture(GL_TEXTURE0);

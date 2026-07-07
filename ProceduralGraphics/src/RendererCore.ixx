@@ -122,6 +122,14 @@ export void RenderLoop() {
 	Log("Starting Render Loop...");
 	while (glfwWindowShouldClose(MainWindow) == false)
 	{
+		// Rescale perspective based on main window frame buffer size
+		// #Todo, make this only execute on a callback.
+		int mainWindowfbW, mainWindowfbH;
+		glfwGetFramebufferSize(MainWindow, &mainWindowfbW, &mainWindowfbH);
+		if (mainWindowfbH > 0)
+			SetPerspective(GEditorCam, GEditorCam.fovDeg, (float)mainWindowfbW / (float)mainWindowfbH,
+				GEditorCam.nearPlane, GEditorCam.farPlane);
+
 		// Input is registered at beginning of frame.
 		FrameInputReset(MainWindow);
 
@@ -134,7 +142,7 @@ export void RenderLoop() {
 		UpdateTimeData();
 
 		// Update camera
-		UpdateEditorCamera(GEditorCam, MainWindow, gDeltaTime, 1920, 1080);
+		UpdateEditorCamera(GEditorCam, MainWindow, gDeltaTime, mainWindowfbW, mainWindowfbH);
 		GCamera.view = GEditorCam.view;
 		// #TODO: When Scene View viewport with imgui is implemented, update proj from that viewport's size.
 		GCamera.proj = GEditorCam.proj;
