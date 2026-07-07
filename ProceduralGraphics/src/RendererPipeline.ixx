@@ -99,8 +99,11 @@ export void RenderPipeline_RenderFrame(int _viewportW, int _viewportH) {
     if (PickingIsRequested()) {
         // Picking Pass requires opaquePassContext
         PickingPass_Execute(fcommon, opaquePassContext, PickingProgram);
-
         PickingReadback();
+
+        // Picking leaves FBO 0 bound, restore the scene target for the following passes.
+        glBindFramebuffer(GL_FRAMEBUFFER, ViewportFBO);
+        glViewport(0, 0, _viewportW, _viewportH);
     }
 
     SelectedTintPass_Execute(fcommon, SelectedEntity, SelectedTintProgram);
