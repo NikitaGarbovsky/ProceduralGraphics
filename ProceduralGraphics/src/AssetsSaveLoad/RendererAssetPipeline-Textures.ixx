@@ -14,6 +14,10 @@ export module RendererAssetPipeline:Textures;
 
 // Imports
 import <cstdint>;
+import DebugUtilities;
+
+// Global, persistent texture cache
+static std::unordered_map<std::string, GLuint> GTextureCache;
 
 // Generated upon loading a assimp file this this importer. Holds common info that is easy to 
 // reference for the importing process.
@@ -21,24 +25,16 @@ struct ImportContext
 {
     const aiScene* scene = nullptr;
     std::string modelDirectory;
-
-    // Cache textures so we don’t create duplicates for the same "*0" or same file
-    std::unordered_map<std::string, GLuint> textureCache;
-    GLuint whiteTex = 0;
+    std::string modelPath; // Full path of the file being imported.
 };
 
-// Used as a fallback if no texture is able to be loaded from the file.
-static GLuint CreateWhiteTexture2D()
-{
-    GLuint tex = 0;
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    const uint32_t white = 0xFFFFFFFFu;
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, &white);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    return tex;
+// One single place to flip images if necessary.
+static void EnsureStbConfigred() {
+    static bool configured = false;
+    if (!configured) {
+        stbi_set_flip_vertically_on_load(true);
+        configured = true;
+    }
 }
 
 // Generates the opengl texture stuff.
@@ -61,6 +57,37 @@ static GLuint CreateGLTextureRGBA8(int _width, int _height, const unsigned char*
     glGenerateMipmap(GL_TEXTURE_2D);
 
     glBindTexture(GL_TEXTURE_2D, 0);
+    return tex;
+}
+
+// Creates the raw GL object for a 1x1 solid color texture. 
+static GLuint CreateSolidTextureRGBA8(unsigned char _red, unsigned char _green, unsigned char _blue, unsigned char _alpha) {
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+
+    unsigned char px[4] = { _red, _green, _blue, _alpha };
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, px);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return tex;
+}
+
+// Cached access to solid color textures. Every material with the same base color across ALL
+// loaded models shares one GL texture.
+static GLuint GetSolidTextureRGBA8(unsigned char _red, unsigned char _green, unsigned char _blue, unsigned char _alpha)
+{
+    char key[32];
+    std::snprintf(key, sizeof(key), "solid:%u,%u,%u,%u", _red, _green, _blue, _alpha);
+
+    if (auto it = GTextureCache.find(key); it != GTextureCache.end())
+        return it->second;
+
+    GLuint tex = CreateSolidTextureRGBA8(_red, _green, _blue, _alpha);
+    GTextureCache.emplace(key, tex);
     return tex;
 }
 
@@ -94,37 +121,20 @@ static GLuint LoadEmbeddedAssimpTexture(const aiTexture* _tex)
 }
 
 // Helper for checking is any textures exist in certain areas of the assimp aiScene material.
-static bool TryGetFirstTexturePath(const aiMaterial* mat, aiString& outPath)
+static bool TryGetFirstTexturePath(const aiMaterial* _mat, aiString& _outPath)
 {
     // Common glTF mappings in Assimp
-    if (mat->GetTexture(aiTextureType_BASE_COLOR, 0, &outPath) == AI_SUCCESS) return true;
-    if (mat->GetTexture(aiTextureType_DIFFUSE, 0, &outPath) == AI_SUCCESS) return true;
-    if (mat->GetTexture(aiTextureType_UNKNOWN, 0, &outPath) == AI_SUCCESS) return true;
+    if (_mat->GetTexture(aiTextureType_BASE_COLOR, 0, &_outPath) == AI_SUCCESS) return true;
+    if (_mat->GetTexture(aiTextureType_DIFFUSE, 0, &_outPath) == AI_SUCCESS) return true;
+    if (_mat->GetTexture(aiTextureType_UNKNOWN, 0, &_outPath) == AI_SUCCESS) return true;
     return false;
-}
-
-// Generates the opengl texture stuff for color data that is on the material itself (no base texture)
-static GLuint CreateSolidTextureRGBA8(unsigned char _red, unsigned char _green, unsigned char _blue, unsigned char _alpha)
-{
-    GLuint tex = 0;
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-
-    unsigned char px[4] = { _red, _green, _blue, _alpha };
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, px);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-    return tex;
 }
 
 // Find any textures or colors, then return it.
 export GLuint ResolveAlbedoTexture(ImportContext& _ctx, const aiMaterial* _mat)
 {
-    // #TODO: Don't need to call this, every frame. 
-    stbi_set_flip_vertically_on_load(true);
+    EnsureStbConfigred();
+
     // 1) Try to load an albedo/basecolor texture
     aiString path;
     if (TryGetFirstTexturePath(_mat, path))
@@ -132,16 +142,26 @@ export GLuint ResolveAlbedoTexture(ImportContext& _ctx, const aiMaterial* _mat)
         const char* p = path.C_Str();
         if (p && p[0])
         {
-            const std::string key = p;
+            // Build unique cache key.
+            const bool embedded = (p[0] == '*');
+            const std::string key = embedded ? (_ctx.modelPath + "|" + p) 
+                                             : (_ctx.modelDirectory + p);
 
             // Cached?
-            if (auto it = _ctx.textureCache.find(key); it != _ctx.textureCache.end())
+            if (auto it = GTextureCache.find(key); it != GTextureCache.end()) {
+                // Console/Debug output
+                std::string path = "Found a cached texture: ";
+                path += key;
+                path += " when loading: ";
+                path += _ctx.modelPath;
+                Log(path.c_str());
                 return it->second;
+            }
 
             GLuint tex = 0;
 
             // Embedded: "*0"
-            if (p[0] == '*')
+            if (embedded)
             {
                 int idx = std::atoi(p + 1);
                 if (idx >= 0 && idx < (int)_ctx.scene->mNumTextures)
@@ -171,7 +191,7 @@ export GLuint ResolveAlbedoTexture(ImportContext& _ctx, const aiMaterial* _mat)
 
             if (tex != 0)
             {
-                _ctx.textureCache.emplace(key, tex);
+                GTextureCache.emplace(key, tex);
                 return tex;
             }
         }
@@ -201,9 +221,5 @@ export GLuint ResolveAlbedoTexture(ImportContext& _ctx, const aiMaterial* _mat)
     }
 
     // 3) Fallback, no texture or base color was found, use white as placeholder.
-
-    if (_ctx.whiteTex == 0)
-        _ctx.whiteTex = CreateWhiteTexture2D();
-
-    return _ctx.whiteTex;
+    return GetSolidTextureRGBA8(255, 255, 255, 255);
 }

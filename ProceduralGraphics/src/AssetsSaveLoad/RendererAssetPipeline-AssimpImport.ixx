@@ -68,7 +68,7 @@ static void ExtractMeshInstance_P3N3Uv2(
         glm::vec3 p = _world * glm::vec4(pA.x, pA.y, pA.z, 1.0f);
 
         //p *= unitScale; // #TODO apply different scales depending on file format
-        
+
         glm::vec3 n = glm::normalize(normalM * glm::vec3(nA.x, nA.y, nA.z));
 
         _out.vertices.insert(_out.vertices.end(), { p.x, p.y, p.z, n.x, n.y, n.z, uvA.x, uvA.y });
@@ -85,7 +85,7 @@ static void ExtractMeshInstance_P3N3Uv2(
     }
 
     const aiMaterial* mat = _ctx.scene->mMaterials[_mesh->mMaterialIndex];
-    
+
     // Debug
     /*Log(("MatIndex=" + std::to_string(_mesh->mMaterialIndex) +
         " BC=" + std::to_string(mat->GetTextureCount(aiTextureType_BASE_COLOR)) +
@@ -147,25 +147,13 @@ bool ImportGLB_AsSubmeshes_P3N3Uv2(const char* _path, std::vector<ImportedSubmes
 
     const aiScene* scene = importer.ReadFile(_path, flags);
 
-    // Debug output
-    /*Log(("Meshs in file: " + std::to_string(scene->mNumMeshes)).c_str());
-    Log(("Textures in file: " + std::to_string(scene->mNumTextures)).c_str());
-    
-    for (unsigned i = 0; i < scene->mNumTextures; ++i)
-    {
-        const aiTexture* t = scene->mTextures[i];
-        Log(("  Tex[" + std::to_string(i) + "] w=" + std::to_string(t->mWidth) +
-            " h=" + std::to_string(t->mHeight) +
-            " name=" + std::string(t->mFilename.C_Str())).c_str());
-    }*/
-
     if (!scene || !scene->mRootNode)
         return false;
 
     ImportContext ctx;
     ctx.scene = scene;
-    ctx.modelDirectory = GetDirectoryFromPath(_path); // #TODO not currently used, perhapes sometime in the future I'll need the path for some reason.
-    ctx.whiteTex = 0; // Assigned later
+    ctx.modelDirectory = GetDirectoryFromPath(_path);
+    ctx.modelPath = _path ? _path : ""; // Namespaces embedded "*N" texture cache keys per file.
 
     TraverseAndExtract(ctx, scene->mRootNode, glm::mat4(1.0f), _outSubmeshes);
     return true;
