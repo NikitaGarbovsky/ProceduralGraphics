@@ -44,6 +44,12 @@ export auto LoadShaderProgram(const char* _vertexShaderPath, const char* _fragme
 
 	glLinkProgram(program);
 
+	// Detach and delete shader objects
+	glDetachShader(program, vertexShader);
+	glDetachShader(program, fragmentShader);
+	glDeleteShader(vertexShader);
+	glDeleteShader(fragmentShader);
+
 	// Check for link errors
 	GLint link_result = GL_FALSE;
 	glGetProgramiv(program, GL_LINK_STATUS, &link_result);
@@ -59,6 +65,7 @@ export auto LoadShaderProgram(const char* _vertexShaderPath, const char* _fragme
 
 	if (link_result == GL_FALSE) {
 		LogWarning("Program link failed");
+		glDeleteProgram(program);
 		return 0;
 	}
 
@@ -143,6 +150,7 @@ GLuint CreateShader(GLenum _shaderType, const char* _shaderName)
 	if (compile_result == GL_FALSE)
 	{
 		PrintErrorDetails(true, shaderID, _shaderName);
+		glDeleteShader(shaderID);
 		return 0;
 	}
 
