@@ -28,6 +28,7 @@ import RendererPicking;
 import RendererLights;
 import RendererTransformUtils;
 import RendererSkybox;
+import RendererScenes;
 
 // Function prototypes
 void Render();
@@ -90,7 +91,7 @@ export bool InitRenderer() {
 	gTimeSinceAppStart = glfwGetTime();
 
 	Log("Renderer Succussfully Initialized");
-	
+
 	LoadResources();
 	return true;
 }
@@ -104,13 +105,9 @@ export void LoadResources() {
 	OutlineProgram = LoadShaderProgram("Assets/Shaders/Temp/outline.vert","Assets/Shaders/Temp/outline.frag");
 	SelectedTintProgram = LoadShaderProgram("Assets/Shaders/Temp/selectedTint.vert","Assets/Shaders/Temp/selectedTint.frag");
 
-	// Load model & create a Temporary REntity
-	LoadModel_AsREntities_P3N3Uv2("Assets/Models/Soldier.glb", RenderObjProgram, glm::vec3(-1, 1, -1));
-
-	// Load model & create a Temporary REntity
-	LoadModel_AsREntities_P3N3Uv2("Assets/Models/Soldier.glb", RenderObjProgram, glm::vec3(-10, 1, -1));
-
-	LoadModel_AsREntities_P3N3Uv2("Assets/Models/plane.fbx", RenderObjProgram, glm::vec3(0, 0, 0));
+	// Register all scenes and queue up the starting one. 
+	Scenes_RegisterAll(RenderObjProgram);
+	Scene_RequestSwitch(0); // 0 = Default Sandbox Scene
 
 	// Debug
 	ValidateREntityArrayAlignment();
@@ -139,7 +136,22 @@ export void RenderLoop() {
 		if (KeyDown(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(MainWindow, true);
 		if (KeyPressed(GLFW_KEY_F2)) EditorUIEnabled = !EditorUIEnabled; // Enable/Disable Editor UI.
 
+		// Scene switching with the number keys while the editor UI is hidden. When the UI is
+		// visible the same keys are handled inside EditorUI instead, where they are blocked
+		// while typing in a text field. So no double handling. #TODO: this is a temporary solution, figure out a proper one.
+		if (!EditorUIEnabled)
+		{
+			if (KeyPressed(GLFW_KEY_1)) Scene_RequestSwitch(0);
+			if (KeyPressed(GLFW_KEY_2)) Scene_RequestSwitch(1);
+			if (KeyPressed(GLFW_KEY_3)) Scene_RequestSwitch(2);
+		}
+
 		UpdateTimeData();
+
+		// Apply any pending scene switch at this safe point, then run the scene's own logic.
+		// The very first frame applies the startup request and loads the Sandbox here.
+		Scene_ApplyPendingSwitch();
+		Scene_Update(gDeltaTime);
 
 		// Update camera
 		UpdateEditorCamera(GEditorCam, MainWindow, gDeltaTime, mainWindowfbW, mainWindowfbH);
@@ -161,7 +173,7 @@ export void RenderLoop() {
 			{
 				// Just simply spawn the light directly in front of the camera a fixed distance.
 				glm::vec3 spawnPos(GEditorCam.position.x + GEditorCam.forward.x * 0.5, GEditorCam.position.y + GEditorCam.forward.y * 0.5, GEditorCam.position.z + GEditorCam.forward.z * 0.5);
-					
+
 				uint32_t mode = EditorUIGetPlaceLightMode();
 				uint32_t newLight = UINT32_MAX;
 
@@ -171,7 +183,7 @@ export void RenderLoop() {
 
 				SelectedLight = newLight;
 				SelectedEntity = UINT32_MAX;
-				
+
 
 				EditorUIClearPlaceLightMode();
 			}
@@ -210,7 +222,7 @@ export void RenderLoop() {
 // Renders the 3D scene using the outlayed RenderPipeline
 void Render() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	
+
 	// Grab framebuffer size (main window size)
 	int  fbW, fbH;
 	glfwGetFramebufferSize(MainWindow, &fbW, &fbH);

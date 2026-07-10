@@ -28,12 +28,12 @@
     <Filter Include="Source Files\DebugAndUtilities">
       <UniqueIdentifier>{a6833cec-b536-49d1-bb0f-413d3dff2728}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Scenes">
+      <UniqueIdentifier>{64279fbb-b830-4af8-812d-c0badf96fce8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\RendererCore.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\RendererData.ixx">
@@ -108,9 +108,6 @@
     <ClCompile Include="src\RendererLights.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RendererSkybox.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\DebugAndUtilities\DebugUtilities.ixx">
       <Filter>Source Files\DebugAndUtilities</Filter>
     </ClCompile>
@@ -128,6 +125,27 @@
     </ClCompile>
     <ClCompile Include="src\DebugAndUtilities\RendererUtilities.ixx">
       <Filter>Source Files\DebugAndUtilities</Filter>
+    </ClCompile>
+    <ClCompile Include="src\RendererCore.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\RendererSkybox.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Scenes\RendererScenes.ixx">
+      <Filter>Source Files\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Scenes\RendererScenes-Core.ixx">
+      <Filter>Source Files\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Scenes\RendererScenes-Sandbox.ixx">
+      <Filter>Source Files\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Scenes\RendererScenes-PerlinNoise.ixx">
+      <Filter>Source Files\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Scenes\RendererScenes-Terrain.ixx">
+      <Filter>Source Files\Scenes</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

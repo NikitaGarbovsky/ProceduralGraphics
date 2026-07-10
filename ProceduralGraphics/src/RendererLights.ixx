@@ -114,6 +114,23 @@ export void ShutdownLights() {
     LightTransforms.scale.clear();
 }
 
+// Truncates the light tables down to _count lights, destroying everything above that index.
+// Used to reset each scenes lights to their default upon scene change.
+export void Lights_TruncateTo(uint32_t _count) {
+    if (_count >= GetLightCount()) return;
+
+    LightsTypes.resize(_count);
+    LightsColors.resize(_count);
+    LightsIntensity.resize(_count);
+    LightsRange.resize(_count);
+    LightsInnerDeg.resize(_count);
+    LightsOuterDeg.resize(_count);
+
+    LightTransforms.position.resize(_count);
+    LightTransforms.rotation.resize(_count);
+    LightTransforms.scale.resize(_count);
+}
+
 export glm::mat4 GetLightModelMatrix(LightID _id) {
     return ComposeTRSMatrix(LightTransforms.position[_id], LightTransforms.rotation[_id], LightTransforms.scale[_id]);
 }
@@ -189,7 +206,7 @@ export void UpdateLights() {
     }
 
     glBindBuffer(GL_UNIFORM_BUFFER, lightsUBO);
-    // Copies bytes from CPU RAM into GPU memory (into UBO’s storage) 
+    // Copies bytes from CPU RAM into GPU memory (into UBOâ€™s storage) 
     // (upload the light block once, so all fragment's have access to this buffer of data)
     // #TODO, optimization: dont upload every frame like this, instead upload only when lights change.
     glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(GPULightBlock), &block);

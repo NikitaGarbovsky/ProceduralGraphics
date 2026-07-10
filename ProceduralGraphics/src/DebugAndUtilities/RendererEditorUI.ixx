@@ -27,6 +27,7 @@ import DebugUtilities;
 import RendererAssetPipeline;
 import RendererCamera;
 import RendererInput;
+import RendererScenes;
 
 export bool EditorUIEnabled = false;
 
@@ -84,6 +85,135 @@ void EditorUI_BeginFrame() {
 // State set at end of Imgui Frame
 void EditorUI_EndFrame() {
     ImGui_EndFrame();
+}
+
+// Scene switching via number keys
+static void SceneShortcuts() {
+    if (ImGui_WantsKeyboard()) return;
+    if (GInput.cursorCaptured) return;
+
+    const ImGuiKey firstKey = ImGuiKey_1;
+    for (uint32_t i = 0; i < Scene_Count() && i < 9; ++i)
+        if (ImGui::IsKeyPressed((ImGuiKey)(firstKey + i)))
+            Scene_RequestSwitch((int32_t)i);
+}
+
+// ------------------------------ Scene hotbar & panel ------------------------------
+//                      Bottom-center hotbar for scene switching.
+
+// Planned scenes for future projects :)
+struct PlannedSceneEntry { const char* label; const char* tooltip; };
+static const PlannedSceneEntry gPlannedScenes[] = {
+    { "Post FX", "Not implemented yet." },
+    { "Fireworks", "Not implemented yet." },
+    { "Shadows", "Not implemented yet." },
+    { "Deferred", "Not implemented yet." },
+    { "Shader Study", ": )" }
+};
+
+// Shared layout numbers for the hotbar.
+static constexpr float hotbarButtonW = 120.0f;
+static constexpr float hotbarButtonH = 44.0f;
+static constexpr float hotbarBottomMargin = 12.0f;
+
+// Wraps tooltip text
+static void SceneTooltip(const char* _text)
+{
+    if (!ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) return;
+    ImGui::BeginTooltip();
+    ImGui::PushTextWrapPos(360.0f);
+    ImGui::TextUnformatted(_text);
+    ImGui::PopTextWrapPos();
+    ImGui::EndTooltip();
+}
+
+static void DrawSceneHotbar()
+{
+    int fbW, fbH;
+    glfwGetFramebufferSize(MainWindow, &fbW, &fbH);
+
+    // Anchor at bottom-center
+    ImGui::SetNextWindowPos(ImVec2((float)fbW * 0.5f, (float)fbH - hotbarBottomMargin),
+        ImGuiCond_Always, ImVec2(0.5f, 1.0f));
+
+    ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar;
+
+    ImGui::Begin("##SceneHotbar", nullptr, flags);
+    ImGui::PushFont(gsmall_font);
+
+    const ImVec2 buttonSize(hotbarButtonW, hotbarButtonH);
+    const int32_t active = Scene_ActiveIndex();
+
+    // Implemented scenes. Clickable, active one highlighted.
+    for (uint32_t i = 0; i < Scene_Count(); ++i)
+    {
+        if (i > 0) ImGui::SameLine();
+
+        const bool isActive = ((int32_t)i == active);
+        if (isActive)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.45f, 0.85f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.22f, 0.52f, 0.92f, 1.0f));
+        }
+
+        if (ImGui::Button(Scene_Name(i), buttonSize))
+            Scene_RequestSwitch((int32_t)i); 
+
+        if (isActive)
+            ImGui::PopStyleColor(2);
+
+        SceneTooltip(Scene_Description(i));
+    }
+
+    // Planned scenes: greyed out until implemented, tooltips active.
+    for (const PlannedSceneEntry& planned : gPlannedScenes)
+    {
+        ImGui::SameLine();
+        ImGui::BeginDisabled(true);
+        ImGui::Button(planned.label, buttonSize);
+        ImGui::EndDisabled();
+        SceneTooltip(planned.tooltip);
+    }
+
+    ImGui::PopFont();
+    ImGui::End();
+}
+
+// The scene panel, docked in the bottom-right corner. Holds every scene related control: the
+// shared chrome (active scene + Reload) on top, then the active scene's own DrawUI below it.
+static void DrawScenePanel()
+{
+    int fbW, fbH;
+    glfwGetFramebufferSize(MainWindow, &fbW, &fbH);
+
+    // Anchor bottom right. The (1, 1) pivot puts the window's bottom-right corner at this
+    // point, so the panel grows upward as the active scene's controls need more room.
+    ImGui::SetNextWindowPos(ImVec2((float)fbW - 12.0f, (float)fbH - 12.0f),
+        ImGuiCond_Always, ImVec2(1.0f, 1.0f));
+    ImGui::SetNextWindowSize(ImVec2(340.0f, 0.0f)); // height 0 = auto fit
+
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
+    ImGui::Begin("Scene", nullptr, flags);
+    ImGui::PushFont(gsmall_font);
+
+    const int32_t active = Scene_ActiveIndex();
+    ImGui::Text("Active: %s", (active >= 0) ? Scene_Name((uint32_t)active) : "<none>");
+    ImGui::SameLine(ImGui::GetWindowWidth() - 90.0f);
+    if (ImGui::Button("Reload"))
+        Scene_RequestReload();
+
+    ImGui::Separator();
+
+    // Contextual controls owned by the active scene. Widgets fill the row while leaving room
+    // for their labels on the right.
+    ImGui::PushItemWidth(-110.0f);
+    Scene_DrawActiveUI();
+    ImGui::PopItemWidth();
+
+    ImGui::PopFont();
+    ImGui::End();
 }
 
 // ------------------------------ Content Browser helpers ------------------------------
@@ -171,7 +301,7 @@ static void DrawAssetBrowser()
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
     ImGui::PushFont(gsmall_font);
-   
+
     if (ImGui::Button("Asset Browser"))
         isAssetBrowserOpen = !isAssetBrowserOpen;
 
@@ -197,12 +327,12 @@ static void DrawAssetBrowser()
     ImGui::Begin("Asset Browser", &isAssetBrowserOpen, winFlags);
 
     ImGui::PushFont(gsmall_font);
-    
+
     ImGui::SetNextItemWidth(240.0f);
     ImGui::InputTextWithHint("##search", "Search...", AssetSearchArr, IM_ARRAYSIZE(AssetSearchArr));
     ImGui::Separator();
 
-    
+
     float leftW = 240.0f;
 
     ImGui::BeginChild("##dir_tree", ImVec2(leftW, 0), true);
@@ -312,11 +442,10 @@ export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _v
     // =========== Entity Window ===========
     ImGui::PushFont(glarge_font);
 
+    // Docked top right
     int x1, y1;
     glfwGetFramebufferSize(MainWindow, &x1, &y1);
-    x1 -= x1 / 6;
-    y1 -= (y1 / 6) * 5;
-    ImVec2 pos = ImVec2((float)x1, (float)y1);
+    ImVec2 pos = ImVec2((float)x1 - 250.0f - 20.0f, 20.0f);
     ImGui::SetNextWindowPos(pos);
     ImGui::SetNextWindowSize(ImVec2(250, 450));
     ImGui::Begin("Entities", nullptr, windowFlags0);
@@ -332,7 +461,15 @@ export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _v
 
     if (ImGui::BeginListBox("##entity_list", ImVec2(-1, 120)))
     {
+        const uint32_t persistentCount = Scene_PersistentEntityCount();
+        const int32_t activeScene = Scene_ActiveIndex();
+
         for (uint32_t i = 0; i < CurrentRenderedEntitys.size(); ++i) {
+            if (i == 0 && persistentCount > 0)
+                ImGui::TextDisabled("-- Persistent --");
+            if (i == persistentCount)
+                ImGui::TextDisabled("-- %s --", (activeScene >= 0) ? Scene_Name((uint32_t)activeScene) : "Scene");
+
             std::string label = "Entity: "; label += std::to_string(i + 1);
             bool selected = (_selectedEntityID == i);
             if (ImGui::Selectable(label.c_str(), selected))
@@ -354,12 +491,10 @@ export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _v
         str += std::to_string(_selectedEntityID + 1);
         ImGui::SetNextWindowSize(ImVec2(250, 200));
 
+        // Sits directly below the Entities window on the right edge.
         int x, y;
         glfwGetFramebufferSize(MainWindow, &x, &y);
-        x -= x / 6;
-        y -= (y / 5) * 2;
-
-        ImVec2 pos2 = ImVec2((float)x, (float)y);
+        ImVec2 pos2 = ImVec2((float)x - 250.0f - 20.0f, 20.0f + 450.0f + 10.0f);
         ImGui::SetNextWindowPos(pos2);
         ImGui::Begin(str.c_str(), nullptr, windowFlags0);
 
@@ -399,9 +534,9 @@ export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _v
 
     ImGui::SetNextWindowPos(ImVec2(20, 250));
     ImGui::SetNextWindowSize(ImVec2(280, 220));
-    
+
     ImGui::Begin("Lights", nullptr, windowFlagsL);
-    
+
     uint32_t lightCount = GetLightCount();
     ImGui::PushFont(gsmall_font);
     ImGui::Text("Total Lights: %u", lightCount);
@@ -461,10 +596,16 @@ export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _v
         ImGui::End();
     }
 
+    // Scene panel (active scene + Reload + contextual controls),
+    DrawScenePanel();
+    // the bottom-center hotbar of scene buttons.
+    DrawSceneHotbar();
+
     // Content Browser 
     DrawAssetBrowser();
 
     GizmoShortcuts();
+    SceneShortcuts();
 
     // =========== Gizmos ===========
     if (_selectedEntityID != UINT32_MAX)

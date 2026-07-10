@@ -115,7 +115,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <BuildStlModules>true</BuildStlModules>
       <ScanSourceForModuleDependencies>true</ScanSourceForModuleDependencies>
-      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\Assimp\include;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\imgui-1.92.5;$(ProjectDir)Dependencies\imgui-1.92.5\backends;$(ProjectDir)Dependencies\ImGuizmo-1.83;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\AssetsSaveLoad;$(ProjectDir)Dependencies\Assimp\include;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\imgui-1.92.5;$(ProjectDir)Dependencies\imgui-1.92.5\backends;$(ProjectDir)Dependencies\ImGuizmo-1.83;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,7 +135,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <BuildStlModules>true</BuildStlModules>
       <ScanSourceForModuleDependencies>true</ScanSourceForModuleDependencies>
-      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\Assimp\include;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\imgui-1.92.5;$(ProjectDir)Dependencies\imgui-1.92.5\backends;$(ProjectDir)Dependencies\ImGuizmo-1.83;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\AssetsSaveLoad;$(ProjectDir)Dependencies\Assimp\include;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\imgui-1.92.5;$(ProjectDir)Dependencies\imgui-1.92.5\backends;$(ProjectDir)Dependencies\ImGuizmo-1.83;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -153,7 +153,6 @@
     <ClCompile Include="Dependencies\imgui-1.92.5\imgui_widgets.cpp" />
     <ClCompile Include="Dependencies\ImGuizmo-1.83\ImGuizmo.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="RendererSkybox.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-AssimpImport.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-Mesh.ixx" />
     <ClCompile Include="src\AssetsSaveLoad\RendererAssetPipeline-Textures.ixx" />
@@ -178,6 +177,12 @@
     <ClCompile Include="src\RendererInput\RendererInput.ixx" />
     <ClCompile Include="src\RendererLights.ixx" />
     <ClCompile Include="src\RendererPipeline.ixx" />
+    <ClCompile Include="src\RendererSkybox.ixx" />
+    <ClCompile Include="src\Scenes\RendererScenes-Core.ixx" />
+    <ClCompile Include="src\Scenes\RendererScenes-PerlinNoise.ixx" />
+    <ClCompile Include="src\Scenes\RendererScenes-Sandbox.ixx" />
+    <ClCompile Include="src\Scenes\RendererScenes-Terrain.ixx" />
+    <ClCompile Include="src\Scenes\RendererScenes.ixx" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />
