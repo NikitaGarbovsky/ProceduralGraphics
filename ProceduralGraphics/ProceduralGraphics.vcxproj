@@ -183,6 +183,7 @@
     <ClCompile Include="src\Scenes\RendererScenes-Sandbox.ixx" />
     <ClCompile Include="src\Scenes\RendererScenes-Terrain.ixx" />
     <ClCompile Include="src\Scenes\RendererScenes.ixx" />
+    <ClCompile Include="src\TerrainGen.ixx" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />

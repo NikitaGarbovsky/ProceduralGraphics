@@ -65,7 +65,10 @@ static Bounds ComputeBounds_Sphere(const float* _vertices, uint32_t _vertexCount
     return b;
 }
 
-// Assembles the mesh & it's bounds and returns its ID. 
+/// <summary>
+/// Assembles the mesh & it's bounds and returns its ID. 
+/// Formfactor: Vec3 Position, Vec3 Normals, Vec2 UV's
+/// </summary>
 MeshID CreateMeshFromData_P3N3Uv2(
     const float* _vertices,
     uint32_t _vertexCount,

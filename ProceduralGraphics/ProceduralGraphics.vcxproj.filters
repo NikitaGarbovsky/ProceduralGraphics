@@ -147,6 +147,9 @@
     <ClCompile Include="src\Scenes\RendererScenes-Terrain.ixx">
       <Filter>Source Files\Scenes</Filter>
     </ClCompile>
+    <ClCompile Include="src\TerrainGen.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\AssetsSaveLoad\stb_image_write.h">
