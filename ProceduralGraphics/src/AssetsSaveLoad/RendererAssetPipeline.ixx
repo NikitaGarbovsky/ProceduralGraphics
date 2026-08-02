@@ -20,7 +20,7 @@ import <glm.hpp>;
 
 // Module partitions, specifics of parts of the loader go into each respective partition.
 import :Mesh;
-import :Textures;
+export import :Textures;
 import :AssimpImport;
 
 // Publically exported functions

@@ -26,6 +26,10 @@ import <cstdint>;
 import <glew.h>;
 import <glm.hpp>;
 
+// Where the generated noise files go. The terrain scene reads noise.raw as its heightmap.
+export constexpr const char* kNoiseRawPath = "Resources/Textures/noise.raw";
+export constexpr const char* kNoiseJpgPath = "Resources/Textures/noise.jpg";
+
 // A scene consists of pointers to related elements, configured in each scenes respective module. 
 export struct SceneFuncs
 {

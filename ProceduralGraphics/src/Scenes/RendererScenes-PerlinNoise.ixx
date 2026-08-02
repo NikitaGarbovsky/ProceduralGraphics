@@ -5,7 +5,8 @@ module;
 
 /// <summary>
 /// The Perlin Noise scene. Generates a perlin noise texture on load, saves it as noise.raw
-/// and noise.jpg, and shows it on three quads. #TODO: link up the different quads to the shdaers
+/// and noise.jpg, and shows it on three quads: raw greyscale, a fire color gradient, and an
+/// animated version that lerps through the noise gradient.
 /// </summary>
 export module RendererScenes:PerlinNoise;
 
@@ -13,15 +14,11 @@ import :Core;
 import TerrainGen;
 import RendererAssetPipeline;
 import RendererEntitys;
+import RendererUtilities;
 import DebugUtilities;
 import <cstdint>;
 import <glew.h>;
 import <glm.hpp>;
-
-// Generated noise paths, the terrain scene uses read noise.raw as its heightmap.
-// #TODO: in future allow user to change path within application.
-constexpr const char* kNoiseRawPath = "Assets/Textures/noise.raw";
-constexpr const char* kNoiseJpgPath = "Assets/Textures/noise.jpg";
 
 // Scene state
 static NoiseParams SParams{};
@@ -29,12 +26,19 @@ static NoiseMap SMap{};
 static GLuint SNoiseTex = 0;
 static MaterialID SQuadMats[3] = {};
 static int SQuadCount = 0;
-static float STime = 0.0f; // #TODO: hook up the animated quad shader
+
+// The three quad programs, made on load and deleted on shutdown.
+static GLuint SProgGreyscale = 0;
+static GLuint SProgColor = 0;
+static GLuint SProgAnimated = 0;
+static GLint STimeLoc = -1;
+static float STime = 0.0f;
 
 // Makes a GL texture from the 8 bit grayscale noise data. Stored as a single red channel
 // with a swizzle so shaders reading .rgb still show grayscale. The scene owns this texture
 // and deletes it itself, its not part of the shared texture cache.
-static GLuint CreateGrayscaleTexture(int _width, int _height, const unsigned char* _gray) {
+static GLuint CreateGrayscaleTexture(int _width, int _height, const unsigned char* _gray)
+{
 	GLuint tex = 0;
 	glGenTextures(1, &tex);
 	glBindTexture(GL_TEXTURE_2D, tex);
@@ -56,10 +60,12 @@ static GLuint CreateGrayscaleTexture(int _width, int _height, const unsigned cha
 	return tex;
 }
 
-// Makes a 1x1 quad facing the camera with the given texture, scaled up through the
-// transform. Gives back the material id so the texture can be swapped when perlin noise is regenerated.
-static uint32_t CreateNoiseQuad(GLuint _texture, const glm::vec3& _pos, const glm::vec3& _scale, MaterialID& _outMaterial) {
-	// Quad verts, layout like this for CreateMeshFromData_P3N3Uv2
+// Makes a 1x1 quad facing the camera (+Z) with the given program and texture, scaled up
+// through the transform. Gives back the material id so the texture can be swapped later.
+static uint32_t CreateNoiseQuad(GLuint _program, GLuint _texture, const glm::vec3& _pos,
+	const glm::vec3& _scale, MaterialID& _outMaterial)
+{
+	// P3 N3 UV2, matches CreateMeshFromData_P3N3Uv2's layout
 	const float verts[] = {
 		-0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,
 		 0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   1.0f, 0.0f,
@@ -69,7 +75,7 @@ static uint32_t CreateNoiseQuad(GLuint _texture, const glm::vec3& _pos, const gl
 	const uint32_t indices[] = { 0, 1, 2,  0, 2, 3 };
 
 	MeshID meshId = CreateMeshFromData_P3N3Uv2(verts, 4, indices, 6);
-	_outMaterial = CreateMaterial(SceneDefaultProgram, _texture);
+	_outMaterial = CreateMaterial(_program, _texture);
 
 	const uint32_t first = (uint32_t)REntitySubmeshes.size();
 	REntitySubmeshes.push_back(Submesh{ meshId, _outMaterial });
@@ -87,7 +93,8 @@ static uint32_t CreateNoiseQuad(GLuint _texture, const glm::vec3& _pos, const gl
 }
 
 // Makes a fresh noise map, saves the files, and puts the new texture on the quads.
-static void Perlin_Regenerate() {
+static void Perlin_Regenerate()
+{
 	if (!Noise_Generate(SParams, SMap))
 		return;
 
@@ -103,30 +110,47 @@ static void Perlin_Regenerate() {
 		REntityMaterials[SQuadMats[i]].tex0 = SNoiseTex;
 }
 
-static void Perlin_Init() {
+static void Perlin_Init()
+{
 	SParams = NoiseParams{}; // Fresh defaults every load
 	STime = 0.0f;
 	SQuadCount = 0;
 
+	// One program per quad, all reusing the standard instanced vertex shader.
+	// If one fails to load, fall back to the default program so the quad still shows.
+	SProgGreyscale = LoadShaderProgram("Assets/Shaders/Temp/model.vert", "Assets/Shaders/Scenes/NoiseGreyscale.frag");
+	SProgColor = LoadShaderProgram("Assets/Shaders/Temp/model.vert", "Assets/Shaders/Scenes/NoiseColor.frag");
+	SProgAnimated = LoadShaderProgram("Assets/Shaders/Temp/model.vert", "Assets/Shaders/Scenes/NoiseAnimated.frag");
+	if (SProgGreyscale == 0) SProgGreyscale = SceneDefaultProgram;
+	if (SProgColor == 0)     SProgColor = SceneDefaultProgram;
+	if (SProgAnimated == 0)  SProgAnimated = SceneDefaultProgram;
+
+	STimeLoc = glGetUniformLocation(SProgAnimated, "Time");
+
 	Perlin_Regenerate();
 
-	// Three quads: greyscale, gradient and animated.
+	// Create the quads for this scene.
 	const glm::vec3 scale(10.0f, 10.0f, 1.0f);
-	CreateNoiseQuad(SNoiseTex, glm::vec3(-12.0f, 6.0f, 0.0f), scale, SQuadMats[0]);
-	CreateNoiseQuad(SNoiseTex, glm::vec3(0.0f, 6.0f, 0.0f), scale, SQuadMats[1]);
-	CreateNoiseQuad(SNoiseTex, glm::vec3(12.0f, 6.0f, 0.0f), scale, SQuadMats[2]);
+	CreateNoiseQuad(SProgGreyscale, SNoiseTex, glm::vec3(-12.0f, 6.0f, 0.0f), scale, SQuadMats[0]);
+	CreateNoiseQuad(SProgColor, SNoiseTex, glm::vec3(0.0f, 6.0f, 0.0f), scale, SQuadMats[1]);
+	CreateNoiseQuad(SProgAnimated, SNoiseTex, glm::vec3(12.0f, 6.0f, 0.0f), scale, SQuadMats[2]);
 	SQuadCount = 3;
 }
 
-static void Perlin_Update(float _deltaTime) {
+static void Perlin_Update(float _deltaTime)
+{
 	STime += _deltaTime;
+
+	// Feed the time into the animated quad's shader
+	if (SProgAnimated != 0 && STimeLoc != -1)
+		glProgramUniform1f(SProgAnimated, STimeLoc, STime);
 }
 
-// The imgui panel used to draw perlin noise parameters
-static void Perlin_DrawUI() {
+static void Perlin_DrawUI()
+{
 	ImGui::DragInt("Width", &SParams.width, 8.0f, 64, 2048);
 	ImGui::DragInt("Height", &SParams.height, 8.0f, 64, 2048);
-	if (SParams.width >= 1024 || SParams.height >= 1024)
+	if (SParams.width > 1024 || SParams.height > 1024)
 		ImGui::TextDisabled("(large maps take a few seconds)");
 
 	ImGui::SliderInt("Octaves", &SParams.octaves, 1, 10);
@@ -135,9 +159,8 @@ static void Perlin_DrawUI() {
 	ImGui::SliderFloat("Lacunarity", &SParams.lacunarity, 1.5f, 3.0f);
 
 	int seed = (int)SParams.seed;
-	// Only allow positive seeds.
 	if (ImGui::InputInt("Seed (0 = time)", &seed))
-		SParams.seed = (uint32_t)(seed < 0 ? 0 : seed); 
+		SParams.seed = (uint32_t)(seed < 0 ? 0 : seed); // no negatives allowed
 
 	if (SMap.width > 0)
 		ImGui::TextDisabled("Last: seed %u, %.2fs", SMap.seedUsed, SMap.generationSeconds);
@@ -146,22 +169,31 @@ static void Perlin_DrawUI() {
 		Perlin_Regenerate();
 }
 
-static void Perlin_Shutdown() {
-	// The noise texture is the scene's own, everything else cleans up automatically
+static void Perlin_Shutdown()
+{
+	// The noise texture and the three programs are the scene's,
+	// everything else cleans up automatically.
 	if (SNoiseTex != 0)
 	{
 		glDeleteTextures(1, &SNoiseTex);
 		SNoiseTex = 0;
 	}
+
+	if (SProgGreyscale != 0 && SProgGreyscale != SceneDefaultProgram) glDeleteProgram(SProgGreyscale);
+	if (SProgColor != 0 && SProgColor != SceneDefaultProgram)         glDeleteProgram(SProgColor);
+	if (SProgAnimated != 0 && SProgAnimated != SceneDefaultProgram)   glDeleteProgram(SProgAnimated);
+	SProgGreyscale = SProgColor = SProgAnimated = 0;
+
 	SQuadCount = 0;
 	SMap = NoiseMap{};
 }
 
 // Hands the scene system everything it needs to know about this scene.
-export SceneFuncs GetScene_PerlinNoise() {
+export SceneFuncs GetScene_PerlinNoise()
+{
 	SceneFuncs scene{};
 	scene.name = "Perlin Noise";
-	scene.description = "Generates perlin noise, saves noise.raw + noise.jpg,\nand shows it on three quads.";
+	scene.description = "Generates perlin noise, saves noise.raw + noise.jpg,\nand shows it on three quads: greyscale, gradient, animated.";
 	scene.Init = &Perlin_Init;
 	scene.Update = &Perlin_Update;
 	scene.DrawUI = &Perlin_DrawUI;

@@ -1,4 +1,4 @@
-in vec2 v3Uv;
+in vec2 v2Uv;
 in vec3 v3Normal;
 in vec3 v3WorldPos;
 
@@ -86,7 +86,7 @@ vec3 CalculateLight(GPULight _light, vec3 V, vec3 _fragPos, vec3 albedo) {
 }
 
 void main() { 
-    vec3 albedo = texture(Tex0, v3Uv).rgb;
+    vec3 albedo = texture(Tex0, v2Uv).rgb;
 
     vec3 V = normalize(CameraPos - v3WorldPos);
 

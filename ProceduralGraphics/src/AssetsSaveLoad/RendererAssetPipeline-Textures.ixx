@@ -28,6 +28,8 @@ struct ImportContext
     std::string modelPath; // Full path of the file being imported.
 };
 
+export GLuint LoadTexture2D(const char* _filePath);
+
 // One single place to flip images if necessary.
 static void EnsureStbConfigred() {
     static bool configured = false;
@@ -87,6 +89,28 @@ static GLuint GetSolidTextureRGBA8(unsigned char _red, unsigned char _green, uns
         return it->second;
 
     GLuint tex = CreateSolidTextureRGBA8(_red, _green, _blue, _alpha);
+    GTextureCache.emplace(key, tex);
+    return tex;
+}
+
+// Loads a texture straight from an image file, cached by path so repeat loads share one
+// GL texture. Gives back magenta if the file can't be read so missing files are obvious.
+export GLuint LoadTexture2D(const char* _filePath) 
+{
+    std::string key = _filePath ? _filePath : "";
+    if (auto it = GTextureCache.find(key); it != GTextureCache.end())
+        return it->second;
+
+    int w = 0, h = 0, comp = 0;
+    unsigned char* rgba = stbi_load(_filePath, &w, &h, &comp, 4);
+    if (!rgba) {
+        LogWarning((std::string("LoadTexture2D: could not load: ") + key).c_str());
+        return GetSolidTextureRGBA8(255, 0, 255, 255);
+    }
+
+    GLuint tex = CreateGLTextureRGBA8(w, h, rgba);
+    stbi_image_free(rgba);
+
     GTextureCache.emplace(key, tex);
     return tex;
 }
