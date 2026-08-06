@@ -150,6 +150,15 @@
     <ClCompile Include="src\TerrainGen.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\Passes\RendererPass_PostProcess.ixx">
+      <Filter>Source Files\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Scenes\RendererScenes-PostProcess.ixx">
+      <Filter>Source Files\Scenes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Passes\RendererFullscreenQuad.ixx">
+      <Filter>Source Files\Passes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\AssetsSaveLoad\stb_image_write.h">

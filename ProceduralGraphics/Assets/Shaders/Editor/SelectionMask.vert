@@ -8,12 +8,9 @@ layout (location = 7) in vec4 im3;
 uniform mat4 ViewMat;
 uniform mat4 ProjectionMat;
 
-uniform vec3 Pivot;
-uniform float OutlineScale;
-
+// Positions the model for the mask. 
 void main()
 {
 	mat4 model = mat4(im0, im1, im2, im3);
-	vec3 p = (position - Pivot) * OutlineScale + Pivot;
-	gl_Position = ProjectionMat * ViewMat * model * vec4(p, 1.0);
+	gl_Position = ProjectionMat * ViewMat * model * vec4(position, 1.0);
 }

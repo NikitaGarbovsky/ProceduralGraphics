@@ -25,6 +25,7 @@ import RendererUtilities;
 import DebugUtilities;
 import RendererTransformUtils;
 import RendererPicking;
+import RendererFullscreenQuad;
 
 // Render Passes
 import RendererPass_Opaque;
@@ -32,6 +33,7 @@ import RendererPass_Picking;
 import RendererPass_SelectedOutline;
 import RendererPass_SelectedTint;
 import RendererPass_DebugBounds;
+import RendererPass_PostProcess;
 import RendererLights;
 import RendererSkybox;
 
@@ -40,19 +42,23 @@ static FrameCommon fcommon;
 static PassContext opaquePassContext;
 
 export void InitRendererPipeline() {
+    InitFullscreenQuad();
     InitPassContext(opaquePassContext);   // glGenBuffers
     InitSelectedOutlinePass();
     InitSelectedTintPass();
     InitDebugBoundsPass();
+    InitPostProcessPass();
     InitLights();
 }
 
 export void ShutdownRendererPipeline() {
     ShutdownLights();
+    ShutdownPostProcessPass();
     ShutdownDebugBoundsPass();
     ShutdownSelectedOutlinePass();
     ShutdownSelectedTintPass();
     ShutDownPassContext(opaquePassContext);
+    ShutdownFullscreenQuad();
 }
 
 // Executes each render pass in sequence per frame.
@@ -107,21 +113,14 @@ export void RenderPipeline_RenderFrame(int _viewportW, int _viewportH) {
     }
 
     SelectedTintPass_Execute(fcommon, SelectedEntity, SelectedTintProgram);
-    SelectedOutlinePass_Execute(fcommon, SelectedEntity, OutlineProgram);
+    SelectedOutlinePass_Execute(fcommon, SelectedEntity);
     DebugBoundsPass_Execute(fcommon, SelectedEntity);
 
     // =========== RENDERED FRAME COMPLETE ===========
     
-    // Now read and draw all that render data for this frame into the frame buffer object
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, ViewportFBO);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    // Flatten the multisampled scene into the plain texture post processing reads.
+    ResolveViewportTarget();
 
-    glBlitFramebuffer(
-        0, 0, _viewportW, _viewportH,
-        0, 0, _viewportW, _viewportH,
-        GL_COLOR_BUFFER_BIT,
-        GL_NEAREST
-    );
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // Last step, draw the finished frame onto the window through any active screen effect.
+    PostProcessPass_Execute(fcommon);
 }

@@ -104,7 +104,6 @@ static void SceneShortcuts() {
 // Planned scenes for future projects :)
 struct PlannedSceneEntry { const char* label; const char* tooltip; };
 static const PlannedSceneEntry gPlannedScenes[] = {
-    { "Post FX", "Not implemented yet." },
     { "Fireworks", "Not implemented yet." },
     { "Shadows", "Not implemented yet." },
     { "Deferred", "Not implemented yet." },
@@ -716,6 +715,11 @@ export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _v
 export bool EditorUI_WantsMouse()
 {
     return gWantsMouse;
+}
+
+// True while imgui is eating keyboard input, so shortcuts don't fire while typing in a text box.
+export bool EditorUI_WantsKeyboard() {
+    return EditorUIEnabled && ImGui_WantsKeyboard();
 }
 
 static const char* LightPrefix(LightType _t)

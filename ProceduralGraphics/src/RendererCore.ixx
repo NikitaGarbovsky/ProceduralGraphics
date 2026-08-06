@@ -29,6 +29,7 @@ import RendererLights;
 import RendererTransformUtils;
 import RendererSkybox;
 import RendererScenes;
+import RendererPass_PostProcess;
 
 // Function prototypes
 void Render();
@@ -43,7 +44,6 @@ export bool InitRenderer() {
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-	glfwWindowHint(GLFW_SAMPLES, 8); // For MSAA
 
 	MainWindow = glfwCreateWindow(1920, 1080, "Procedural Graphics", NULL, NULL);
 	if (MainWindow == NULL)
@@ -102,7 +102,6 @@ export void LoadResources() {
 	// Load each of the shader programs that are used in the renderer.
 	RenderObjProgram = LoadShaderProgram("Assets/Shaders/Temp/model.vert","Assets/Shaders/Temp/model.frag");
 	PickingProgram = LoadShaderProgram("Assets/Shaders/Temp/picking.vert","Assets/Shaders/Temp/picking.frag");
-	OutlineProgram = LoadShaderProgram("Assets/Shaders/Temp/outline.vert","Assets/Shaders/Temp/outline.frag");
 	SelectedTintProgram = LoadShaderProgram("Assets/Shaders/Temp/selectedTint.vert","Assets/Shaders/Temp/selectedTint.frag");
 
 	// Register all scenes and queue up the starting one. 
@@ -135,6 +134,8 @@ export void RenderLoop() {
 		// #TODO move this to a central input location
 		if (KeyDown(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(MainWindow, true);
 		if (KeyPressed(GLFW_KEY_F2)) EditorUIEnabled = !EditorUIEnabled; // Enable/Disable Editor UI.
+		if (KeyPressed(GLFW_KEY_TAB) && !EditorUI_WantsKeyboard())
+			PostFX_CycleNext();
 
 		// Scene switching with the number keys while the editor UI is hidden. When the UI is
 		// visible the same keys are handled inside EditorUI instead, where they are blocked
@@ -144,6 +145,7 @@ export void RenderLoop() {
 			if (KeyPressed(GLFW_KEY_1)) Scene_RequestSwitch(0);
 			if (KeyPressed(GLFW_KEY_2)) Scene_RequestSwitch(1);
 			if (KeyPressed(GLFW_KEY_3)) Scene_RequestSwitch(2);
+			if (KeyPressed(GLFW_KEY_4)) Scene_RequestSwitch(3);
 		}
 
 		UpdateTimeData();
