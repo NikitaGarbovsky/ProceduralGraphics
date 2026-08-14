@@ -63,6 +63,8 @@ export void ResolveViewportTarget();
 /// <summary> Shutdown / delete viewport resources. </summary>
 export void ShutdownViewportTarget();              
 
+export bool EditorUIEnabled = false;
+
 // Clear any prior viewport data
 static void DestroyViewportTarget_Internal() {
 	if (ViewportDepthStencilMS) { glDeleteTextures(1, &ViewportDepthStencilMS); ViewportDepthStencilMS = 0; }

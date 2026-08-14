@@ -29,8 +29,6 @@ import RendererCamera;
 import RendererInput;
 import RendererScenes;
 
-export bool EditorUIEnabled = false;
-
 // State variables for types of input
 static ImGuizmo::OPERATION gTformGuizmoCurrentOperation = ImGuizmo::TRANSLATE;
 static ImGuizmo::MODE      gAxisType = ImGuizmo::LOCAL;
@@ -615,7 +613,6 @@ export void EditorUI_Draw(const glm::mat4& _view, const glm::mat4& _proj, int _v
             EntityTransforms.scale[_selectedEntityID]
         );
 
-        ImGuizmo::SetOrthographic(false);
         ImGuizmo::SetDrawlist(ImGui::GetForegroundDrawList());
         ImGuizmo::SetRect(0.0f, 0.0f, (float)_viewportW, (float)_viewportH);
 

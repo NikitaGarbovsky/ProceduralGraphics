@@ -124,18 +124,20 @@ export void RenderLoop() {
 		glfwGetFramebufferSize(MainWindow, &mainWindowfbW, &mainWindowfbH);
 		if (mainWindowfbH > 0)
 			SetPerspective(GEditorCam, GEditorCam.fovDeg, (float)mainWindowfbW / (float)mainWindowfbH,
-				GEditorCam.nearPlane, GEditorCam.farPlane);
+					GEditorCam.nearPlane, GEditorCam.farPlane);
 
 		// Input is registered at beginning of frame.
 		FrameInputReset(MainWindow);
 
 		glfwPollEvents();
 
-		// #TODO move this to a central input location
 		if (KeyDown(GLFW_KEY_ESCAPE)) glfwSetWindowShouldClose(MainWindow, true);
 		if (KeyPressed(GLFW_KEY_F2)) EditorUIEnabled = !EditorUIEnabled; // Enable/Disable Editor UI.
 		if (KeyPressed(GLFW_KEY_TAB) && !EditorUI_WantsKeyboard())
 			PostFX_CycleNext();
+		// F3 flips between the normal camera and the narrower game one.
+		if (KeyPressed(GLFW_KEY_F3) && !EditorUI_WantsKeyboard())
+			GEditorCam.mode = (GEditorCam.mode == CameraMode::Game) ? CameraMode::Free : CameraMode::Game;
 
 		// Scene switching with the number keys while the editor UI is hidden. When the UI is
 		// visible the same keys are handled inside EditorUI instead, where they are blocked

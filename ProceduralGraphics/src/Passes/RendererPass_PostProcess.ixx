@@ -1,6 +1,7 @@
 module;
 
 #include <glew.h>
+#include <vector>
 
 /// <summary>
 /// The post processing pass. Everything before this point already rendered into the ViewportFBO,
@@ -16,6 +17,7 @@ import RendererFrame;
 import RendererUtilities; // For LoadShaderProgram
 import RendererFullscreenQuad;
 import DebugUtilities;
+import TerrainGen;        // For PP noise texture generation.
 import <cstdint>;
 
 // One tweakable float on an effect. The label shows up in the editor, the uniform name is what
@@ -30,7 +32,7 @@ export struct PostParam {
 };
 
 // #TODO: limiting like this is annoying, add more dynamic elements to the editor UI.
-constexpr uint32_t kMaxPostParams = 6;
+constexpr uint32_t kMaxPostParams = 8;
 constexpr uint32_t kMaxPostEffects = 12;
 
 // One post processing effect. Every effect shares the same quad and vertex shader, so the
@@ -44,7 +46,10 @@ export struct PostEffect {
     GLint uSceneTex = -1;
     GLint uResolution = -1;
     GLint uTime = -1;
-    // #TODO: add more here
+    
+    // Optional second texture on unit 1. Left at 0 for effects that don't require it.
+    GLuint effectTex = 0;
+    GLint uEffectTex = -1;
 
     PostParam params[kMaxPostParams];
     uint32_t paramCount = 0;
@@ -56,6 +61,9 @@ export struct PostEffect {
 static PostEffect GEffects[kMaxPostEffects];
 static uint32_t GEffectCount = 0;
 static uint32_t GActiveEffect = 0; // 0 is always the no effect entry.
+
+// Generated noise texture on startup, effects that require the noise (rain) use it.
+static GLuint GNoiseTex = 0;
 
 // ==========================================================================================
 // Internal
@@ -80,13 +88,76 @@ static uint32_t RegisterEffect(const char* _name, const char* _description, cons
         effect.uSceneTex = glGetUniformLocation(effect.program, "SceneTex");
         effect.uResolution = glGetUniformLocation(effect.program, "Resolution");
         effect.uTime = glGetUniformLocation(effect.program, "Time");
+        effect.uEffectTex = glGetUniformLocation(effect.program, "EffectTex");
 
         // The scene texture always sits at 0, so this only needs setting once.
         if (effect.uSceneTex != -1)
             glProgramUniform1i(effect.program, effect.uSceneTex, 0);
+
+        if (effect.uEffectTex != -1)
+            glProgramUniform1i(effect.program, effect.uEffectTex, 1);
     }
 
     return GEffectCount++;
+}
+
+// Hands an effect a second texture.
+static void SetEffectTexture(uint32_t _effect, GLuint _texture) {
+    GEffects[_effect].effectTex = _texture;
+}
+
+// Creates a noise texture to be used for post processing effects. 
+// This uses the perlin noise generator.
+static GLuint CreateNoiseTexture() {
+    NoiseParams params{};
+    params.width = 256;
+    params.height = 256;
+    params.octaves = 3;
+    params.wavelength = 6.0f; 
+    params.gain = 0.5f;
+    params.lacunarity = 2.0f;
+    params.seed = 1337; // Rain stays the same every run.      
+
+    // Create the first noise map,
+    NoiseMap redMap{};
+    if (!Noise_Generate(params, redMap)) {
+        LogWarning("CreateNoiseTexture: noise generation failed, rain has no texture.");
+        return 0;
+    }
+
+    // Create second,
+    params.seed = 7331; // Different seed, so green is an unrelated pattern
+    NoiseMap greenMap{};
+    if (!Noise_Generate(params, greenMap)) {
+        LogWarning("CreateNoiseTexture: noise generation failed, rain has no texture.");
+        return 0;
+    }
+
+    // Weave the maps together into one two channel image
+    std::vector<unsigned char> pixels(redMap.gray8.size() * 2);
+    for (size_t i = 0; i < redMap.gray8.size(); ++i) {
+        pixels[i * 2 + 0] = redMap.gray8[i];
+        pixels[i * 2 + 1] = greenMap.gray8[i];
+    }
+
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 2);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8, redMap.width, redMap.height, 0, GL_RG, GL_UNSIGNED_BYTE, pixels.data());
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+    // Mirrored rather than plain repeat. This noise doesn't tile, so a straight repeat puts a
+    // hard line through the picture every time it wraps. Mirroring makes the edges meet and 
+    // no hard line :).
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return tex;
 }
 
 // Adds a slider backed float to an effect.
@@ -136,6 +207,8 @@ export void InitPostProcessPass()
     GEffectCount = 0;
     GActiveEffect = 0;
 
+    GNoiseTex = CreateNoiseTexture();
+
     // ---------------- The effect list. Tab steps through these in order. ----------------
 
     // Index 0 is the no effect pass. Still goes through the quad so there is only ever one
@@ -154,7 +227,21 @@ export void InitPostProcessPass()
         "Assets/Shaders/PostProcessing/PostGreyscale.frag");
     AddParam(effect, "Amount", "Amount", 1.0f, 0.0f, 1.0f);
 
-    // #TODO: rain and the pixel effect
+    effect = RegisterEffect("Rain",
+        "Water running down the glass in front of the camera.\n The drops bend the picture behind them like little lenses.",
+        "Assets/Shaders/PostProcessing/PostRain.frag");
+    SetEffectTexture(effect, GNoiseTex); // Give the rain the generated noise texture.
+    AddParam(effect, "Speed", "Speed", 0.125f, 0.0f, 1.0f);
+    AddParam(effect, "Strength", "Strength", 0.04f, 0.0f, 0.2f);
+    AddParam(effect, "Tiling", "Tiling", 2.0f, 1.0f, 8.0f);
+    AddParam(effect, "Squash", "Squash", 0.1f, 0.02f, 1.0f);
+    // #TODO: Pixel effect
+
+    // Debug: Warn if the second sample texture an effect needs isn't set. #TODO: create a better system for different amounts of parameters.
+    for (uint32_t i = 0; i < GEffectCount; ++i) {
+        if (GEffects[i].uEffectTex != -1 && GEffects[i].effectTex == 0)
+            LogWarning("InitPostProcessPass: an effect wants EffectTex but was never given one.");
+    }
 }
 
 export void ShutdownPostProcessPass()
@@ -170,6 +257,7 @@ export void ShutdownPostProcessPass()
     GEffectCount = 0;
     GActiveEffect = 0;
 
+    if (GNoiseTex) { glDeleteTextures(1, &GNoiseTex); GNoiseTex = 0; }
 }
 
 // Draws the finished scene onto the window through the active effect. This is the last thing
@@ -183,7 +271,7 @@ export void PostProcessPass_Execute(const FrameCommon& _fcommon) {
         return;
     }
 
-    const PostEffect& effect = GEffects[GActiveEffect];
+    const PostEffect& ppEffect = GEffects[GActiveEffect];
 
     // Back to the window
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -193,18 +281,27 @@ export void PostProcessPass_Execute(const FrameCommon& _fcommon) {
     glDepthMask(GL_FALSE);
     glDisable(GL_BLEND);
 
-    glUseProgram(effect.program);
+    glUseProgram(ppEffect.program);
 
-    if (effect.uResolution != -1)
-        glUniform2f(effect.uResolution, (float)_fcommon.viewportW, (float)_fcommon.viewportH);
+    // Unit 1 first, so unit 0 is the one left selected afterwards.
+    if (ppEffect.effectTex != 0) {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, ppEffect.effectTex);
+    }
 
-    if (effect.uTime != -1)
-        glUniform1f(effect.uTime, (float)gTimeSinceAppStart);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, ViewportColorTex);
+
+    if (ppEffect.uResolution != -1)
+        glUniform2f(ppEffect.uResolution, (float)_fcommon.viewportW, (float)_fcommon.viewportH);
+
+    if (ppEffect.uTime != -1)
+        glUniform1f(ppEffect.uTime, (float)gTimeSinceAppStart);
 
     // Push whatever the editor sliders are currently sitting on.
-    for (uint32_t i = 0; i < effect.paramCount; ++i) {
-        if (effect.params[i].location != -1)
-            glUniform1f(effect.params[i].location, effect.params[i].value);
+    for (uint32_t i = 0; i < ppEffect.paramCount; ++i) {
+        if (ppEffect.params[i].location != -1)
+            glUniform1f(ppEffect.params[i].location, ppEffect.params[i].value);
     }
 
     glActiveTexture(GL_TEXTURE0);

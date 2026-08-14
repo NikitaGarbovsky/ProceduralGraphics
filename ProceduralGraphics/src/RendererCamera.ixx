@@ -12,7 +12,7 @@ export module RendererCamera;
 import RendererInput;
 import RendererData;
 
-export enum class CameraMode : uint8_t { Free, Orbit, Ortho }; // #TODO future camera modes. 
+export enum class CameraMode : uint8_t { Free, Game}; 
 
 // Simple camera data currently set in Load Resources.
 export struct CameraData {
