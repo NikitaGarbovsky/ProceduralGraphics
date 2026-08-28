@@ -16,6 +16,7 @@ export import :Sandbox;
 export import :Terrain;
 export import :PerlinNoise;
 export import :PostProcess;
+export import :Fireworks;
 
 // Registers every scene in order. Called once at startup.
 export void Scenes_RegisterAll(GLuint _defaultLitProgram)
@@ -26,5 +27,6 @@ export void Scenes_RegisterAll(GLuint _defaultLitProgram)
 	Scene_Register(GetScene_Terrain());     
 	Scene_Register(GetScene_PerlinNoise()); 
 	Scene_Register(GetScene_PostProcess());
+	Scene_Register(GetScene_Fireworks());
 	// #TODO: add future scenes here.
 }

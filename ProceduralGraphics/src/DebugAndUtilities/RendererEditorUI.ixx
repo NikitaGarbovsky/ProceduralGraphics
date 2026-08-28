@@ -102,7 +102,6 @@ static void SceneShortcuts() {
 // Planned scenes for future projects :)
 struct PlannedSceneEntry { const char* label; const char* tooltip; };
 static const PlannedSceneEntry gPlannedScenes[] = {
-    { "Fireworks", "Not implemented yet." },
     { "Shadows", "Not implemented yet." },
     { "Deferred", "Not implemented yet." },
     { "Shader Study", ": )" }

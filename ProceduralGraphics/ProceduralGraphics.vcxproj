@@ -166,6 +166,7 @@
     <ClCompile Include="src\DebugAndUtilities\RendererUtilities.ixx" />
     <ClCompile Include="src\Passes\RendererFullscreenQuad.ixx" />
     <ClCompile Include="src\Passes\RendererPass_DebugBounds.ixx" />
+    <ClCompile Include="src\Passes\RendererPass_Fireworks.ixx" />
     <ClCompile Include="src\Passes\RendererPass_Opaque.ixx" />
     <ClCompile Include="src\Passes\RendererPass_Picking.ixx" />
     <ClCompile Include="src\Passes\RendererPass_PostProcess.ixx" />
@@ -181,6 +182,7 @@
     <ClCompile Include="src\RendererPipeline.ixx" />
     <ClCompile Include="src\RendererSkybox.ixx" />
     <ClCompile Include="src\Scenes\RendererScenes-Core.ixx" />
+    <ClCompile Include="src\Scenes\RendererScenes-Fireworks.ixx" />
     <ClCompile Include="src\Scenes\RendererScenes-PerlinNoise.ixx" />
     <ClCompile Include="src\Scenes\RendererScenes-Sandbox.ixx" />
     <ClCompile Include="src\Scenes\RendererScenes-Terrain.ixx" />

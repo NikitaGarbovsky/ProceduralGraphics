@@ -1,0 +1,116 @@
+#define WORK_GROUP_SIZE_X 128
+
+layout (local_size_x = WORK_GROUP_SIZE_X,
+        local_size_y = 1,
+        local_size_z = 1
+) in;
+
+// The same buffers the vao draws from.
+// PositionLife: xyz is where the spark is, w is life left.
+// Velocity: xyz is how fast it's going, w is unused.
+layout(std430, binding = 0) buffer PositionLifeBuffer { vec4 PositionLife[]; };
+layout(std430, binding = 1) buffer VelocityBuffer { vec4 Velocity[]; };
+
+// What to do this run.
+// 0 = Put every particle on the ground plane
+// 1 = Climb, move particles and respawn dead ones at the rocket
+// 2 = Explode, throw every particle outward
+// 3 = Dying, move particles and leave dead ones dead
+uniform int Mode;
+
+// Where this fireworks chunk starts in the big buffers.
+uniform uint BaseIndex;
+
+// New random numbers every run so sparks don't repeat.
+uniform int SeedLife;
+uniform int SeedX;
+uniform int SeedY;
+uniform int SeedZ;
+
+// xyz is gravity for this frame, w is delta time.
+uniform vec4 VelocityLifeChange;
+
+// The pad at first, then the rocket as it climbs. Sparks respawn here.
+uniform vec3 EmitterOrigin;
+
+// Adjustable values from the c++ & editor gui side.
+uniform float TrailLife;  
+uniform float BurstSpeed; 
+uniform float BurstLife;  
+
+// Gives back a number between -1 and 1. 
+double RandomValue(uint ID, int Seed) {
+	// (n << 13) is the same as (n * 2^13)
+	// The (x & 7fffffff) operation is equivalent to (x mod 2147483647)
+
+	double RandomValue;
+	int Noise = int(ID) * Seed;
+	Noise = (Noise << 13) ^ Noise;
+
+	int T = (Noise * (Noise * Noise * 15731 + 789221) + 1376312589) & 0x7fffffff;
+	RandomValue = 1.0 - double(T) * 0.93132257461548515625e-9;
+	return RandomValue;
+}
+
+// Puts a particle back on the emitter with a small random push and a short life.
+// While climbing the emitter is the rocket, so respawning here is what draws the trail.
+void ResetParticle(uint Index) {
+	float DriftSpeed = 0.6;
+
+	PositionLife[Index] = vec4(EmitterOrigin.xyz, // Start on the emitter
+		float(RandomValue(Index, SeedLife) + 1.0) * 0.5 * TrailLife); // Short random life
+
+	Velocity[Index] = vec4(
+		DriftSpeed * float(RandomValue(Index, SeedX)),
+		DriftSpeed * float(RandomValue(Index, SeedY)),
+		DriftSpeed * float(RandomValue(Index, SeedZ)),
+		0.0);
+}
+
+// Throws a spark outward from the rocket.
+void ExplodeParticle(uint Index) {
+	vec3 Direction = vec3(
+		float(RandomValue(Index, SeedX)),
+		float(RandomValue(Index, SeedY)),
+		float(RandomValue(Index, SeedZ)));
+	// Normalize or the explosion comes out boxy instead of round.
+	Direction = normalize(Direction);
+
+	// Speed and life get their own random so the edge of the ball looks soft.
+	// The life one uses a different seed so it doesn't match the speed.
+	float Speed = BurstSpeed * (float(RandomValue(Index, SeedLife) + 1.0) * 0.5 * 0.7 + 0.3);
+	float Life = BurstLife * (float(RandomValue(Index, SeedLife + 7919) + 1.0) * 0.5 * 0.5 + 0.5);
+
+	PositionLife[Index] = vec4(EmitterOrigin.xyz, Life);
+	Velocity[Index] = vec4(Direction * Speed, 0.0);
+}
+
+void main() {
+	uint Index = gl_GlobalInvocationID.x + BaseIndex;
+
+	// Ground. Every spark starts fresh, no moving yet.
+	if (Mode == 0)
+	{
+		ResetParticle(Index);
+		return;
+	}
+
+	// Explode. Every spark gets thrown outward at once.
+	if (Mode == 2)
+	{
+		ExplodeParticle(Index);
+		return;
+	}
+
+	// Normal step. Add gravity, move, take life off.
+	Velocity[Index].xyz += VelocityLifeChange.xyz;
+	PositionLife[Index].xyz += Velocity[Index].xyz * VelocityLifeChange.w;
+	PositionLife[Index].w -= VelocityLifeChange.w;
+
+	// Lifespan
+	if (PositionLife[Index].w <= 0.0) {
+		// Climbing respawns dead particles at the rocket. 
+		if (Mode == 1)
+			ResetParticle(Index);
+	}
+}

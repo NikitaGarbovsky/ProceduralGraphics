@@ -159,6 +159,12 @@
     <ClCompile Include="src\Passes\RendererFullscreenQuad.ixx">
       <Filter>Source Files\Passes</Filter>
     </ClCompile>
+    <ClCompile Include="src\Passes\RendererPass_Fireworks.ixx">
+      <Filter>Source Files\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Scenes\RendererScenes-Fireworks.ixx">
+      <Filter>Source Files\Scenes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\AssetsSaveLoad\stb_image_write.h">

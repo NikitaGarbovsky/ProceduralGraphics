@@ -34,6 +34,7 @@ import RendererPass_SelectedOutline;
 import RendererPass_SelectedTint;
 import RendererPass_DebugBounds;
 import RendererPass_PostProcess;
+import RendererPass_Fireworks;
 import RendererLights;
 import RendererSkybox;
 
@@ -101,7 +102,8 @@ export void RenderPipeline_RenderFrame(int _viewportW, int _viewportH) {
     OpaquePass_Build(fcommon, opaquePassContext);
     UpdateLights();
     OpaquePass_Execute(fcommon, opaquePassContext);
-    
+    FireworksPass_Execute(fcommon);
+
     if (PickingIsRequested()) {
         // Picking Pass requires opaquePassContext
         PickingPass_Execute(fcommon, opaquePassContext, PickingProgram);

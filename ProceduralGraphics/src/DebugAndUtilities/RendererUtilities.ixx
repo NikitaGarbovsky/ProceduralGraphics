@@ -189,6 +189,53 @@ auto ReadShaderFile(const char* _filename) -> std::string
 	return shaderCode;
 }
 
+// Loads a standalone compute shader into an opengl program and returns it.
+export auto LoadComputeProgram(const char* _computeShaderPath) -> GLuint {
+	// Create the shader from the filepath
+	GLuint computeShader = CreateShader(GL_COMPUTE_SHADER, _computeShaderPath);
+
+	if (computeShader == 0) {
+		std::string msg = "Compute shader failed, skipping program: ";
+		msg += _computeShaderPath;
+		LogWarning(msg.c_str());
+		return 0;
+	}
+
+	GLuint program = glCreateProgram();
+
+	glAttachShader(program, computeShader);
+	glLinkProgram(program);
+
+	// Detach and delete shader object
+	glDetachShader(program, computeShader);
+	glDeleteShader(computeShader);
+
+	// Check for link errors
+	GLint link_result = GL_FALSE;
+	glGetProgramiv(program, GL_LINK_STATUS, &link_result);
+
+	GLint logLen = 0;
+	glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLen);
+
+	if (logLen > 1) {
+		std::string linkLog(logLen, '\0');
+		glGetProgramInfoLog(program, logLen, nullptr, linkLog.data());
+		Log(("PROGRAM LINK LOG:\n" + linkLog).c_str());
+	}
+
+	if (link_result == GL_FALSE) {
+		LogWarning("Compute program link failed");
+		glDeleteProgram(program);
+		return 0;
+	}
+
+	std::string successLogMessage = "Successfully Loaded Compute Shader: ";
+	successLogMessage += _computeShaderPath;
+
+	Log(successLogMessage.c_str());
+	return program;
+}
+
 // Structures a error output for debugging of shader purposes
 void PrintErrorDetails(bool _isShader, GLuint _id, const char* _name)
 {
