@@ -188,7 +188,7 @@ static void DrawScenePanel()
     // point, so the panel grows upward as the active scene's controls need more room.
     ImGui::SetNextWindowPos(ImVec2((float)fbW - 12.0f, (float)fbH - 12.0f),
         ImGuiCond_Always, ImVec2(1.0f, 1.0f));
-    ImGui::SetNextWindowSize(ImVec2(340.0f, 0.0f)); // height 0 = auto fit
+    ImGui::SetNextWindowSize(ImVec2(420.0f, 0.0f)); // height 0 = auto fit
 
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
     ImGui::Begin("Scene", nullptr, flags);
