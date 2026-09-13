@@ -172,6 +172,7 @@
     <ClCompile Include="src\Passes\RendererPass_PostProcess.ixx" />
     <ClCompile Include="src\Passes\RendererPass_SelectedOutline.ixx" />
     <ClCompile Include="src\Passes\RendererPass_SelectedTint.ixx" />
+    <ClCompile Include="src\Passes\RendererPass_Shadows.ixx" />
     <ClCompile Include="src\RendererCamera.ixx" />
     <ClCompile Include="src\RendererCore.ixx" />
     <ClCompile Include="src\RendererData.ixx" />
@@ -185,6 +186,7 @@
     <ClCompile Include="src\Scenes\RendererScenes-Fireworks.ixx" />
     <ClCompile Include="src\Scenes\RendererScenes-PerlinNoise.ixx" />
     <ClCompile Include="src\Scenes\RendererScenes-Sandbox.ixx" />
+    <ClCompile Include="src\Scenes\RendererScenes-Shadows.ixx" />
     <ClCompile Include="src\Scenes\RendererScenes-Terrain.ixx" />
     <ClCompile Include="src\Scenes\RendererScenes.ixx" />
     <ClCompile Include="src\Scenes\RendererScenes-PostProcess.ixx" />

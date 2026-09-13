@@ -91,6 +91,11 @@ static glm::vec3 EulerDegToForward_ZYX(const glm::vec3& _rDeg) {
     return f;
 }
 
+// Which way a light is pointing, worked out from its euler rotation.
+export glm::vec3 GetLightDirection(LightID _id) {
+    return EulerDegToForward_ZYX(LightTransforms.rotation[_id]);
+}
+
 // =========================^ HELPERS for mutating light data outside of this module ^=========================
 
 export void InitLights() {

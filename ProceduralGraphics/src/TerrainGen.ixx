@@ -8,10 +8,11 @@ module;
 #include <fstream>
 #include <string>
 #include <vector>
+#include <glm.hpp>
 #include "stb_image_write.h"
 
 /// <summary>
-/// Makes the perlin noise used by the Perlin Noise and Terrain scenes.
+/// Makes the perlin noise & terrain used for various scenes.
 ///
 /// Each grid point gets a seeded random value, that gets smoothed with its neighbors, points
 /// in between are cosine interpolated, and a few octaves get summed together.
@@ -56,6 +57,13 @@ export struct NoiseMap
 export bool Noise_Generate(const NoiseParams& _params, NoiseMap& _out);
 export bool Noise_SaveRAW(const NoiseMap& _map, const char* _filePath);
 export bool Noise_SaveJPG(const NoiseMap& _map, const char* _filePath);
+
+// Terrain mesh building. Shared by the Terrain scene and the Shadows scene.
+export void Terrain_SmoothHeights(std::vector<float>& _heights, int _width, int _height, int _iterations);
+export void Terrain_BuildMeshData(const std::vector<float>& _heights, int _width, int _height,
+	float _cellSpacing, float _heightScale, float _uvTiling,
+	std::vector<float>& _outVerts, std::vector<uint32_t>& _outIndices,
+	float& _outMinY, float& _outMaxY);
 
 // ==========================================================================================
 // Internal noise functions. They all take the seed so one generation stays consistent.
@@ -237,4 +245,120 @@ bool Noise_SaveJPG(const NoiseMap& _map, const char* _filePath)
 		return false;
 	}
 	return true;
+}
+
+
+// ==========================================================================================
+// Terrain mesh building
+// ==========================================================================================
+
+// Averages every height with its neighbors that are in bounds. Each pass reads from the
+// previous result and writes into a fresh array so the smoothing doesn't feed on itself.
+void Terrain_SmoothHeights(std::vector<float>& _heights, int _width, int _height, int _iterations)
+{
+	std::vector<float> smoothed(_heights.size());
+
+	for (int pass = 0; pass < _iterations; ++pass)
+	{
+		for (int row = 0; row < _height; ++row)
+		{
+			for (int col = 0; col < _width; ++col)
+			{
+				float total = 0.0f;
+				int validCount = 0;
+
+				for (int dr = -1; dr <= 1; ++dr)
+				{
+					for (int dc = -1; dc <= 1; ++dc)
+					{
+						int r = row + dr;
+						int c = col + dc;
+						if (r < 0 || r >= _height || c < 0 || c >= _width) continue;
+
+						total += _heights[(size_t)r * _width + c];
+						validCount++;
+					}
+				}
+
+				smoothed[(size_t)row * _width + col] = total / (float)validCount;
+			}
+		}
+		_heights = smoothed;
+	}
+}
+
+// Builds the terrain vertex and index data from the heights.
+// Grid is centered on the origin, rows run along Z and columns along X.
+// Normals come from central differences of the neighboring heights.
+void Terrain_BuildMeshData(const std::vector<float>& _heights, int _width, int _height,
+	float _cellSpacing, float _heightScale, float _uvTiling,
+	std::vector<float>& _outVerts, std::vector<uint32_t>& _outIndices,
+	float& _outMinY, float& _outMaxY)
+{
+	const float halfWidth = (_width - 1) * _cellSpacing * 0.5f;
+	const float halfDepth = (_height - 1) * _cellSpacing * 0.5f;
+	const float texU = _uvTiling / (float)(_width - 1);
+	const float texV = _uvTiling / (float)(_height - 1);
+
+	_outMinY = 1e30f;
+	_outMaxY = -1e30f;
+
+	_outVerts.clear();
+	_outVerts.reserve((size_t)_width * _height * 8); // P3 N3 UV2
+
+	for (int row = 0; row < _height; ++row)
+	{
+		const float posZ = halfDepth - (row * _cellSpacing);
+
+		for (int col = 0; col < _width; ++col)
+		{
+			const float posX = -halfWidth + (col * _cellSpacing);
+			const float posY = _heights[(size_t)row * _width + col] * _heightScale;
+
+			_outMinY = glm::min(_outMinY, posY);
+			_outMaxY = glm::max(_outMaxY, posY);
+
+			// Central difference using the neighbor heights. Edges just use the nearest
+			// neighbor with a shorter span.
+			const int colNeg = (col > 0) ? col - 1 : col;
+			const int colPos = (col < _width - 1) ? col + 1 : col;
+			const int rowNeg = (row > 0) ? row - 1 : row;
+			const int rowPos = (row < _height - 1) ? row + 1 : row;
+
+			const float hColNeg = _heights[(size_t)row * _width + colNeg] * _heightScale;
+			const float hColPos = _heights[(size_t)row * _width + colPos] * _heightScale;
+			const float hRowNeg = _heights[(size_t)rowNeg * _width + col] * _heightScale;
+			const float hRowPos = _heights[(size_t)rowPos * _width + col] * _heightScale;
+
+			// How much the height changes per world unit in X and Z.
+			// Z decreases as the row goes up, hence the flipped order on the row one.
+			const float dydx = (hColPos - hColNeg) / ((colPos - colNeg) * _cellSpacing);
+			const float dydz = (hRowNeg - hRowPos) / ((rowPos - rowNeg) * _cellSpacing);
+
+			const glm::vec3 normal = glm::normalize(glm::vec3(-dydx, 1.0f, -dydz));
+
+			_outVerts.insert(_outVerts.end(), {
+				posX, posY, posZ,
+				normal.x, normal.y, normal.z,
+				col * texU, row * texV
+				});
+		}
+	}
+
+	// Two triangles per grid cell
+	_outIndices.clear();
+	_outIndices.reserve((size_t)(_width - 1) * (_height - 1) * 6);
+
+	for (int row = 0; row < _height - 1; ++row)
+	{
+		for (int col = 0; col < _width - 1; ++col)
+		{
+			const uint32_t i = (uint32_t)(row * _width + col);
+
+			_outIndices.insert(_outIndices.end(), {
+				i, i + 1, i + (uint32_t)_width,
+				i + (uint32_t)_width, i + 1, i + (uint32_t)_width + 1
+				});
+		}
+	}
 }

@@ -35,6 +35,7 @@ import RendererPass_SelectedTint;
 import RendererPass_DebugBounds;
 import RendererPass_PostProcess;
 import RendererPass_Fireworks;
+import RendererPass_Shadows;
 import RendererLights;
 import RendererSkybox;
 
@@ -100,6 +101,7 @@ export void RenderPipeline_RenderFrame(int _viewportW, int _viewportH) {
     glDepthFunc(GL_LESS);
 
     OpaquePass_Build(fcommon, opaquePassContext);
+    ShadowPass_Execute(fcommon);
     UpdateLights();
     OpaquePass_Execute(fcommon, opaquePassContext);
     FireworksPass_Execute(fcommon);

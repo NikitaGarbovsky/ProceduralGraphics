@@ -63,115 +63,6 @@ static bool LoadHeightmapRAW(const char* _path, int _width, int _height, std::ve
 	return true;
 }
 
-// Averages every height with its neighbors that are in bounds. Each pass reads from the
-// previous result and writes into a fresh array so the smoothing doesn't feed on itself.
-static void SmoothHeights(std::vector<float>& _heights, int _width, int _height, int _iterations)
-{
-	std::vector<float> smoothed(_heights.size());
-
-	for (int pass = 0; pass < _iterations; ++pass)
-	{
-		for (int row = 0; row < _height; ++row)
-		{
-			for (int col = 0; col < _width; ++col)
-			{
-				float total = 0.0f;
-				int validCount = 0;
-
-				for (int dr = -1; dr <= 1; ++dr)
-				{
-					for (int dc = -1; dc <= 1; ++dc)
-					{
-						int r = row + dr;
-						int c = col + dc;
-						if (r < 0 || r >= _height || c < 0 || c >= _width) continue;
-
-						total += _heights[(size_t)r * _width + c];
-						validCount++;
-					}
-				}
-
-				smoothed[(size_t)row * _width + col] = total / (float)validCount;
-			}
-		}
-		_heights = smoothed;
-	}
-}
-
-// Builds the terrain vertex and index data from the heights.
-// Grid is centered on the origin, rows run along Z and columns along X.
-// Normals come from central differences of the neighboring heights.
-static void BuildTerrainData(const std::vector<float>& _heights, int _width, int _height,
-	std::vector<float>& _outVerts, std::vector<uint32_t>& _outIndices, float& _outMinY, float& _outMaxY)
-{
-	const float halfWidth = (_width - 1) * SCellSpacing * 0.5f;
-	const float halfDepth = (_height - 1) * SCellSpacing * 0.5f;
-	const float texU = 1.0f / (float)(_width - 1);
-	const float texV = 1.0f / (float)(_height - 1);
-
-	_outMinY = 1e30f;
-	_outMaxY = -1e30f;
-
-	_outVerts.clear();
-	_outVerts.reserve((size_t)_width * _height * 8); // P3 N3 UV2
-
-	for (int row = 0; row < _height; ++row)
-	{
-		const float posZ = halfDepth - (row * SCellSpacing);
-
-		for (int col = 0; col < _width; ++col)
-		{
-			const float posX = -halfWidth + (col * SCellSpacing);
-			const float posY = _heights[(size_t)row * _width + col] * SHeightScale;
-
-			_outMinY = glm::min(_outMinY, posY);
-			_outMaxY = glm::max(_outMaxY, posY);
-
-			// Central difference using the neighbor heights. Edges just use the nearest
-			// neighbor with a shorter span.
-			const int colNeg = (col > 0) ? col - 1 : col;
-			const int colPos = (col < _width - 1) ? col + 1 : col;
-			const int rowNeg = (row > 0) ? row - 1 : row;
-			const int rowPos = (row < _height - 1) ? row + 1 : row;
-
-			const float hColNeg = _heights[(size_t)row * _width + colNeg] * SHeightScale;
-			const float hColPos = _heights[(size_t)row * _width + colPos] * SHeightScale;
-			const float hRowNeg = _heights[(size_t)rowNeg * _width + col] * SHeightScale;
-			const float hRowPos = _heights[(size_t)rowPos * _width + col] * SHeightScale;
-
-			// How much the height changes per world unit in X and Z.
-			// Z decreases as the row goes up, hence the flipped order on the row one.
-			const float dydx = (hColPos - hColNeg) / ((colPos - colNeg) * SCellSpacing);
-			const float dydz = (hRowNeg - hRowPos) / ((rowPos - rowNeg) * SCellSpacing);
-
-			const glm::vec3 normal = glm::normalize(glm::vec3(-dydx, 1.0f, -dydz));
-
-			_outVerts.insert(_outVerts.end(), {
-				posX, posY, posZ,
-				normal.x, normal.y, normal.z,
-				col * texU, row * texV
-				});
-		}
-	}
-
-	// Two triangles per grid cell
-	_outIndices.clear();
-	_outIndices.reserve((size_t)(_width - 1) * (_height - 1) * 6);
-
-	for (int row = 0; row < _height - 1; ++row)
-	{
-		for (int col = 0; col < _width - 1; ++col)
-		{
-			const uint32_t i = (uint32_t)(row * _width + col);
-
-			_outIndices.insert(_outIndices.end(), {
-				i, i + 1, i + (uint32_t)_width,
-				i + (uint32_t)_width, i + 1, i + (uint32_t)_width + 1
-				});
-		}
-	}
-}
-
 // The full pipeline: generate noise, save the files, read the RAW back, smooth, build the
 // mesh, and update the shader's height range. Works for both first build and rebuilds.
 static void Terrain_Rebuild()
@@ -188,13 +79,14 @@ static void Terrain_Rebuild()
 		return;
 
 	// 3. Smooth it out. The RAW only has 256 height steps so this hides the stepping.
-	SmoothHeights(heights, SMap.width, SMap.height, SSmoothIterations);
+	Terrain_SmoothHeights(heights, SMap.width, SMap.height, SSmoothIterations);
 
 	// 4. Build the vertex grid
 	std::vector<float> verts;
 	std::vector<uint32_t> indices;
 	float minY = 0.0f, maxY = 0.0f;
-	BuildTerrainData(heights, SMap.width, SMap.height, verts, indices, minY, maxY);
+	Terrain_BuildMeshData(heights, SMap.width, SMap.height, SCellSpacing, SHeightScale, 1.0f,
+		verts, indices, minY, maxY);
 
 	// 5. Upload the mesh. First build makes a fresh one. Rebuilds free the old GPU buffers,
 	//    then move the newly made mesh into the old slot so the mesh id never changes.

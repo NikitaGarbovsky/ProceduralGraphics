@@ -149,6 +149,7 @@ export void RenderLoop() {
 			if (KeyPressed(GLFW_KEY_3)) Scene_RequestSwitch(2);
 			if (KeyPressed(GLFW_KEY_4)) Scene_RequestSwitch(3);
 			if (KeyPressed(GLFW_KEY_5)) Scene_RequestSwitch(4);
+			if (KeyPressed(GLFW_KEY_6)) Scene_RequestSwitch(5);
 		}
 
 		UpdateTimeData();
