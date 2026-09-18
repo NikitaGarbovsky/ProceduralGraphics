@@ -36,6 +36,7 @@ import RendererPass_DebugBounds;
 import RendererPass_PostProcess;
 import RendererPass_Fireworks;
 import RendererPass_Shadows;
+import RendererPass_Deferred;
 import RendererLights;
 import RendererSkybox;
 
@@ -100,10 +101,17 @@ export void RenderPipeline_RenderFrame(int _viewportW, int _viewportH) {
     RenderSkybox(); // First render the skybox,
     glDepthFunc(GL_LESS);
 
+    // Build for the passes.
     OpaquePass_Build(fcommon, opaquePassContext);
     ShadowPass_Execute(fcommon);
     UpdateLights();
-    OpaquePass_Execute(fcommon, opaquePassContext);
+
+    // Deferred or Forward path.
+    if (Deferred_IsActive())
+        DeferredPass_Execute(fcommon, opaquePassContext);
+    else
+        OpaquePass_Execute(fcommon, opaquePassContext);
+
     FireworksPass_Execute(fcommon);
 
     if (PickingIsRequested()) {

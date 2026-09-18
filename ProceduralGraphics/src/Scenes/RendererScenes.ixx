@@ -18,6 +18,7 @@ export import :PerlinNoise;
 export import :PostProcess;
 export import :Fireworks;
 export import :Shadows;
+export import :Deferred;
 
 // Registers every scene in order. Called once at startup.
 export void Scenes_RegisterAll(GLuint _defaultLitProgram)
@@ -30,5 +31,6 @@ export void Scenes_RegisterAll(GLuint _defaultLitProgram)
 	Scene_Register(GetScene_PostProcess());
 	Scene_Register(GetScene_Fireworks());
 	Scene_Register(GetScene_Shadows());
+	Scene_Register(GetScene_Deferred());
 	// #TODO: add future scenes here.
 }

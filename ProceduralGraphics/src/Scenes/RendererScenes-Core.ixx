@@ -59,7 +59,7 @@ struct ScenePreset
 // ==========================================================================================
 // Module state
 // ==========================================================================================
-constexpr uint32_t MaxScenes = 7;
+constexpr uint32_t MaxScenes = 10;
 constexpr uint32_t kNoSelection = 0xFFFFFFFFu; // means nothing selected.
 
 static SceneFuncs GSceneTable[MaxScenes];
